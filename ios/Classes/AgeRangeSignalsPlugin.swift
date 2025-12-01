@@ -26,9 +26,11 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     }
 
     private func handleInitialize(call: FlutterMethodCall, result: @escaping FlutterResult) {
-        if let args = call.arguments as? [String: Any],
-           let gates = args["ageGates"] as? [Int] {
-            ageGates = gates.sorted()
+        if let args = call.arguments as? [String: Any] {
+            if let gates = args["ageGates"] as? [Int] {
+                ageGates = gates.sorted()
+            }
+            // useMockData parameter is ignored on iOS (no mock implementation yet)
         }
         result(nil)
     }

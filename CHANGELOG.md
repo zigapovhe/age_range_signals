@@ -1,4 +1,4 @@
-## 0.0.1
+## 0.1.0
 
 * Initial release
 * Support for Google Play Age Signals API on Android (API 21+)

@@ -5,22 +5,19 @@ import com.google.android.play.agesignals.AgeSignalsManager
 import com.google.android.play.agesignals.AgeSignalsManagerFactory
 import com.google.android.play.agesignals.AgeSignalsRequest
 import com.google.android.play.agesignals.AgeSignalsResult
-import com.google.android.play.agesignals.AgeSignalsException
+import com.google.android.play.agesignals.model.AgeSignalsVerificationStatus
+import com.google.android.play.agesignals.testing.FakeAgeSignalsManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
     private var ageSignalsManager: AgeSignalsManager? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private var useFakeManager = false
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "age_range_signals")
@@ -29,16 +26,32 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
 
         try {
             ageSignalsManager = AgeSignalsManagerFactory.create(context)
+            useFakeManager = false
         } catch (e: Exception) {
             // Manager initialization can fail if Play Services isn't available
             ageSignalsManager = null
+            useFakeManager = false
         }
+    }
+
+    private fun createFakeManager(): AgeSignalsManager {
+        val fakeManager = FakeAgeSignalsManager()
+
+        // Set up a default test result for verified user
+        val fakeResult = AgeSignalsResult.builder()
+            .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
+            .setInstallId("test_install_id_12345")
+            .build()
+
+        fakeManager.setNextAgeSignalsResult(fakeResult)
+        return fakeManager
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "initialize" -> {
-                // No-op on Android, age gates are iOS-specific
+                val useMockData = call.argument<Boolean>("useMockData") ?: false
+                useFakeManager = useMockData
                 result.success(null)
             }
             "checkAgeSignals" -> {
@@ -51,7 +64,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun checkAgeSignals(result: Result) {
-        val manager = ageSignalsManager
+        var manager = ageSignalsManager
         if (manager == null) {
             result.error(
                 "API_NOT_AVAILABLE",
@@ -61,75 +74,73 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             return
         }
 
-        scope.launch {
-            try {
-                val ageSignalsResult = withContext(Dispatchers.IO) {
-                    val request = AgeSignalsRequest.Builder().build()
-                    manager.requestAgeSignals(request)
-                }
+        // If user explicitly requested mock data, use fake manager
+        if (useFakeManager) {
+            val fakeManager = createFakeManager()
+            val request = AgeSignalsRequest.builder().build()
 
-                val status = when (ageSignalsResult.userStatus) {
-                    AgeSignalsResult.USER_STATUS_UNDER_AGE -> "supervised"
-                    AgeSignalsResult.USER_STATUS_OVER_AGE -> "verified"
-                    AgeSignalsResult.USER_STATUS_UNKNOWN -> "unknown"
+            fakeManager.checkAgeSignals(request)
+                .addOnSuccessListener { fakeResult ->
+                    val status = when (fakeResult.userStatus()) {
+                        AgeSignalsVerificationStatus.VERIFIED -> "verified"
+                        AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                        AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
+                        else -> "unknown"
+                    }
+
+                    val resultMap = mapOf(
+                        "status" to status,
+                        "installId" to fakeResult.installId(),
+                        "ageLower" to null,
+                        "ageUpper" to null,
+                        "source" to null
+                    )
+
+                    result.success(resultMap)
+                }
+                .addOnFailureListener { fakeException ->
+                    result.error(
+                        "UNKNOWN_ERROR",
+                        fakeException.message ?: "An error occurred",
+                        null
+                    )
+                }
+            return
+        }
+
+        // Use real API
+        val request = AgeSignalsRequest.builder().build()
+
+        manager.checkAgeSignals(request)
+            .addOnSuccessListener { ageSignalsResult ->
+                val status = when (ageSignalsResult.userStatus()) {
+                    AgeSignalsVerificationStatus.VERIFIED -> "verified"
+                    AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                    AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
                     else -> "unknown"
                 }
 
                 val resultMap = mapOf(
                     "status" to status,
-                    "installId" to ageSignalsResult.installId,
+                    "installId" to ageSignalsResult.installId(),
                     "ageLower" to null,
                     "ageUpper" to null,
                     "source" to null
                 )
 
-                withContext(Dispatchers.Main) {
-                    result.success(resultMap)
-                }
-            } catch (e: AgeSignalsException) {
-                withContext(Dispatchers.Main) {
-                    when (e.errorCode) {
-                        AgeSignalsException.ERROR_CODE_API_NOT_AVAILABLE -> {
-                            result.error(
-                                "API_NOT_AVAILABLE",
-                                "Age Signals API is not available",
-                                null
-                            )
-                        }
-                        AgeSignalsException.ERROR_CODE_PLAY_STORE_VERSION_OUTDATED,
-                        AgeSignalsException.ERROR_CODE_PLAY_SERVICES_VERSION_OUTDATED -> {
-                            result.error(
-                                "API_NOT_AVAILABLE",
-                                "Play Store or Play Services needs to be updated",
-                                null
-                            )
-                        }
-                        AgeSignalsException.ERROR_CODE_NETWORK_ERROR -> {
-                            result.error(
-                                "NETWORK_ERROR",
-                                "Network error occurred while fetching age signals",
-                                null
-                            )
-                        }
-                        else -> {
-                            result.error(
-                                "UNKNOWN_ERROR",
-                                e.message ?: "An unknown error occurred",
-                                null
-                            )
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    result.error(
-                        "UNKNOWN_ERROR",
-                        e.message ?: "An unexpected error occurred",
-                        null
-                    )
-                }
+                result.success(resultMap)
             }
-        }
+            .addOnFailureListener { exception ->
+                result.error(
+                    "UNKNOWN_ERROR",
+                    exception.message ?: "An error occurred while checking age signals",
+                    null
+                )
+            }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

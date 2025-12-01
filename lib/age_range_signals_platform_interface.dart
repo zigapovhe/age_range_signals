@@ -30,10 +30,12 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// For example, [13, 16, 18] will allow the app to determine if the user is
   /// under 13, between 13-15, between 16-17, or 18+.
   ///
-  /// This parameter is ignored on Android.
+  /// Set [useMockData] to true to use fake/test data instead of real APIs.
+  /// This is useful for testing before APIs are available or in development.
+  /// Defaults to false (use real APIs).
   ///
-  /// Should be called before [checkAgeSignals] on iOS.
-  Future<void> initialize({List<int>? ageGates}) {
+  /// Should be called before [checkAgeSignals].
+  Future<void> initialize({List<int>? ageGates, bool useMockData = false}) {
     throw UnimplementedError('initialize() has not been implemented.');
   }
 

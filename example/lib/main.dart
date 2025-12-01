@@ -46,20 +46,17 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   }
 
   Future<void> _initializePlugin() async {
-    if (Platform.isIOS) {
-      try {
-        await AgeRangeSignals.instance.initialize(ageGates: _ageGates);
-        setState(() {
-          _isInitialized = true;
-        });
-      } catch (e) {
-        setState(() {
-          _error = 'Initialization failed: $e';
-        });
-      }
-    } else {
+    try {
+      await AgeRangeSignals.instance.initialize(
+        ageGates: _ageGates,
+        useMockData: true, // Set to true for testing, false for production
+      );
       setState(() {
         _isInitialized = true;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Initialization failed: $e';
       });
     }
   }

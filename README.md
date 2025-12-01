@@ -26,7 +26,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  age_range_signals: ^0.0.1
+  age_range_signals: ^0.1.0
 ```
 
 Then run:
@@ -264,12 +264,68 @@ Follow Apple's guidelines for handling age-related data and ensure compliance wi
 - Age verification data is provided directly by the platform APIs
 - Ensure your app's privacy policy accurately describes how age data is used
 
+## Testing
+
+### Android Testing
+
+You have full control over when to use mock data via the `useMockData` parameter (Android only; ignored on iOS):
+
+```dart
+// For testing with mock data (recommended before January 1, 2026)
+await AgeRangeSignals.instance.initialize(
+  ageGates: [13, 16, 18],
+  useMockData: true,  // Uses FakeAgeSignalsManager
+);
+
+// For production with real APIs
+await AgeRangeSignals.instance.initialize(
+  ageGates: [13, 16, 18],
+  useMockData: false, // Uses real Play Age Signals API (default)
+);
+
+final result = await AgeRangeSignals.instance.checkAgeSignals();
+print(result.status); // AgeSignalsStatus.verified (when useMockData: true)
+print(result.installId); // "test_install_id_12345" (when useMockData: true)
+```
+
+**How it works:**
+- `useMockData: true` - Always uses `FakeAgeSignalsManager` for testing
+- `useMockData: false` (default) - Always uses real Play Age Signals API
+- You control this behavior explicitly in your code
+
+**To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
+
+```kotlin
+// For testing supervised users
+val fakeResult = AgeSignalsResult.builder()
+    .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
+    .setAgeLower(13)
+    .setAgeUpper(17)
+    .setInstallId("test_install_id")
+    .build()
+```
+
+### iOS Testing
+
+On iOS < 26.0, you'll receive an `UnsupportedPlatformException`, which is the expected behavior. Test your error handling:
+
+```dart
+try {
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+} on UnsupportedPlatformException {
+  // Handle gracefully - this is expected on iOS < 26.0
+  print('Age verification not available on this iOS version');
+}
+```
+
 ## Limitations
 
 ### Android
 - The Play Age Signals API is currently in beta
-- Returns mock/test data until January 1, 2026
-- Only returns real data for users in applicable US states after launch
+- Real API returns "Not yet implemented" until January 1, 2026
+- **Before Jan 1, 2026**: Use `useMockData: true` to test with `FakeAgeSignalsManager`
+- **After Jan 1, 2026**: Use `useMockData: false` (default) to get real user data
+- After launch, only returns real data for users in applicable US states
 - Requires Google Play Services to be installed and up to date
 
 ### iOS

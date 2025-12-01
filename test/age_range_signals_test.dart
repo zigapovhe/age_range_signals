@@ -11,7 +11,7 @@ class MockAgeRangeSignalsPlatform
   List<int>? _ageGates;
 
   @override
-  Future<void> initialize({List<int>? ageGates}) async {
+  Future<void> initialize({List<int>? ageGates, bool useMockData = false}) async {
     _initialized = true;
     _ageGates = ageGates;
   }

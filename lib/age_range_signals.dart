@@ -49,11 +49,31 @@ class AgeRangeSignals {
   /// For example, `[13, 16, 18]` will allow the app to determine if the user is
   /// under 13, between 13-15, between 16-17, or 18+.
   ///
-  /// This parameter is ignored on Android.
+  /// Set [useMockData] to true to use fake/test data instead of real APIs.
+  /// This is useful for testing before APIs are available or in development.
+  /// On Android, this enables FakeAgeSignalsManager. Defaults to false.
   ///
-  /// Should be called before [checkAgeSignals] on iOS.
-  Future<void> initialize({List<int>? ageGates}) {
-    return AgeRangeSignalsPlatform.instance.initialize(ageGates: ageGates);
+  /// Should be called before [checkAgeSignals].
+  ///
+  /// Example:
+  /// ```dart
+  /// // For testing with mock data
+  /// await AgeRangeSignals.instance.initialize(
+  ///   ageGates: [13, 16, 18],
+  ///   useMockData: true,
+  /// );
+  ///
+  /// // For production with real APIs
+  /// await AgeRangeSignals.instance.initialize(
+  ///   ageGates: [13, 16, 18],
+  ///   useMockData: false,
+  /// );
+  /// ```
+  Future<void> initialize({List<int>? ageGates, bool useMockData = false}) {
+    return AgeRangeSignalsPlatform.instance.initialize(
+      ageGates: ageGates,
+      useMockData: useMockData,
+    );
   }
 
   /// Checks the age signals for the current user.
