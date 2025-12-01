@@ -34,26 +34,26 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     }
 
     private func handleCheckAgeSignals(result: @escaping FlutterResult) {
-        if #available(iOS 18.0, *) {
+        if #available(iOS 26.0, *) {
             #if canImport(DeclaredAgeRange)
             checkDeclaredAgeRange(result: result)
             #else
             result(FlutterError(
                 code: "UNSUPPORTED_PLATFORM",
-                message: "DeclaredAgeRange API requires iOS 18.0 or later",
+                message: "DeclaredAgeRange API requires iOS 26.0 or later",
                 details: nil
             ))
             #endif
         } else {
             result(FlutterError(
                 code: "UNSUPPORTED_PLATFORM",
-                message: "This feature requires iOS 18.0 or later",
+                message: "This feature requires iOS 26.0 or later",
                 details: nil
             ))
         }
     }
 
-    @available(iOS 18.0, *)
+    @available(iOS 26.0, *)
     private func checkDeclaredAgeRange(result: @escaping FlutterResult) {
         #if canImport(DeclaredAgeRange)
         guard !ageGates.isEmpty else {
@@ -124,7 +124,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         #endif
     }
 
-    @available(iOS 18.0, *)
+    @available(iOS 26.0, *)
     private func requestAgeRange(ageGates: [Int]) async throws -> DeclaredAgeRangeResponse {
         #if canImport(DeclaredAgeRange)
         return try await DeclaredAgeRange.requestAgeRange(ageGates: ageGates)

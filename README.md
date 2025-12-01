@@ -13,10 +13,12 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 ## Platform Support
 
-| Platform | Minimum Version | API |
-|----------|----------------|-----|
-| Android  | API 21 (Android 5.0) | Google Play Age Signals API |
-| iOS      | iOS 18.0 | DeclaredAgeRange API |
+| Platform | Minimum App Version | API Available From | API |
+|----------|----------------|-----|-----|
+| Android  | API 21 (Android 5.0) | API 21+ | Google Play Age Signals API |
+| iOS      | iOS 13.0+ (flexible) | iOS 26.0+ | DeclaredAgeRange API |
+
+**Note:** The iOS DeclaredAgeRange API is only available on iOS 26.0+. On older iOS versions, the plugin will return an `UnsupportedPlatformException`. Your app can support older iOS versions and handle this gracefully.
 
 ## Installation
 
@@ -58,13 +60,9 @@ flutter pub get
 </plist>
 ```
 
-2. Update your app's minimum deployment target to iOS 18.0 in Xcode or in your `ios/Podfile`:
+2. Request the entitlement from Apple Developer Portal for your app identifier.
 
-```ruby
-platform :ios, '18.0'
-```
-
-3. Request the entitlement from Apple Developer Portal for your app identifier.
+**Important:** The DeclaredAgeRange API requires iOS 26.0+, but your app does NOT need to set its minimum deployment target to iOS 26.0. The plugin handles version checking at runtime and will throw an `UnsupportedPlatformException` on older iOS versions, allowing you to handle this gracefully in your app.
 
 ## Usage
 
@@ -230,8 +228,9 @@ Follow Apple's guidelines for handling age-related data and ensure compliance wi
 - Requires Google Play Services to be installed and up to date
 
 ### iOS
-- Requires iOS 18.0 or later
+- DeclaredAgeRange API only available on iOS 26.0+
 - Requires the `com.apple.developer.declared-age-range` entitlement
+- Throws `UnsupportedPlatformException` on iOS versions below 26.0
 - User can decline to share age information
 - Cannot detect falsified birthdates in Apple ID
 
@@ -247,8 +246,10 @@ Follow Apple's guidelines for handling age-related data and ensure compliance wi
 ### iOS
 
 **Error: UNSUPPORTED_PLATFORM**
-- Ensure the device is running iOS 18.0 or later
-- Verify the app has the required entitlement
+- This error is expected on iOS versions below 26.0
+- The DeclaredAgeRange API is only available on iOS 26.0+
+- Handle this gracefully in your app (e.g., use alternative age verification or skip the check)
+- Verify the app has the required entitlement if running on iOS 26.0+
 
 **Error: NOT_INITIALIZED**
 - Call `initialize()` with age gates before calling `checkAgeSignals()`

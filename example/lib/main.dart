@@ -161,7 +161,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             Text(
               Platform.isAndroid
                   ? 'Note: The Play Age Signals API will return mock data until January 1, 2026.'
-                  : 'Note: DeclaredAgeRange requires iOS 18.0 or later.',
+                  : 'Note: DeclaredAgeRange requires iOS 26.0 or later. On older iOS versions, you will receive an UnsupportedPlatformException.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontStyle: FontStyle.italic,
                     color: Colors.grey[600],

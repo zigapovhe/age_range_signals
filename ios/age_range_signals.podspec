@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.version          = '0.0.1'
   s.summary          = 'Flutter plugin for age verification.'
   s.description      = <<-DESC
-Flutter plugin for age verification supporting Google Play Age Signals API (Android) and Apple's DeclaredAgeRange API (iOS 18+).
+Flutter plugin for age verification supporting Google Play Age Signals API (Android) and Apple's DeclaredAgeRange API (iOS 26+).
                        DESC
   s.homepage         = 'https://github.com/zigapovhe/age_range_signals'
   s.license          = { :file => '../LICENSE' }
@@ -15,7 +15,7 @@ Flutter plugin for age verification supporting Google Play Age Signals API (Andr
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.platform = :ios, '18.0'
+  s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
