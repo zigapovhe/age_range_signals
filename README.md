@@ -119,7 +119,7 @@ import 'dart:io';
 import 'package:age_range_signals/age_range_signals.dart';
 
 Future<void> checkUserAge() async {
-  // Initialize with age gates for iOS
+  // Initialize with age gates on iOS (required); Android is a no-op.
   if (Platform.isIOS) {
     await AgeRangeSignals.instance.initialize(
       ageGates: [13, 16, 18],
