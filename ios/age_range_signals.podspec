@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'age_range_signals'
-  s.version          = '0.1.1'
+  s.version          = '0.1.2'
   s.summary          = 'Flutter plugin for age verification.'
   s.description      = <<-DESC
 Flutter plugin for age verification supporting Google Play Age Signals API (Android) and Apple's DeclaredAgeRange API (iOS 26+).
@@ -13,7 +13,7 @@ Flutter plugin for age verification supporting Google Play Age Signals API (Andr
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'zigapovhe' => 'ziga@povhe.si' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'age_range_signals/Classes/**/*'
   s.dependency 'Flutter'
   s.platform = :ios, '13.0'
 
@@ -21,5 +21,5 @@ Flutter plugin for age verification supporting Google Play Age Signals API (Andr
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
   s.swift_version = '5.9'
 
-  s.resource_bundles = {'age_range_signals_privacy' => ['Resources/PrivacyInfo.xcprivacy']}
+  s.resource_bundles = {'age_range_signals_privacy' => ['age_range_signals/Resources/PrivacyInfo.xcprivacy']}
 end

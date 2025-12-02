@@ -1,3 +1,8 @@
+## 0.1.2
+
+* **iOS**: Added Swift Package Manager (SPM) support
+* **Example**: Migrated example project from CocoaPods to Swift Package Manager
+
 ## 0.1.1
 
 * **Android**: Add `useMockData` parameter for testing
