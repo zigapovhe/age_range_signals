@@ -120,7 +120,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
                 case .sharing(let range):
                     let source: String?
-                    switch range.source {
+                    switch range.ageRangeDeclaration {
                     case .selfDeclared:
                         source = "selfDeclared"
                     case .guardianDeclared:

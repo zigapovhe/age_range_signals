@@ -64,7 +64,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  age_range_signals: ^0.1.2
+  age_range_signals: ^0.1.3
 ```
 
 Then run:

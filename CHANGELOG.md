@@ -1,3 +1,7 @@
+## 0.1.3
+
+* **iOS**: Fixed compilation error: renamed `range.source` to `range.ageRangeDeclaration` to match Apple's DeclaredAgeRange API (#3)
+
 ## 0.1.2
 
 * **iOS**: Added Swift Package Manager (SPM) support
