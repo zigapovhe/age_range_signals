@@ -6,7 +6,6 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 - [Features](#features)
 - [Platform Support](#platform-support)
-- [Installation](#installation)
 - [Platform Setup](#platform-setup)
   - [Android](#android)
   - [iOS](#ios)
@@ -57,21 +56,6 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 | iOS      | iOS 13.0+ (flexible) | iOS 26.0+ | DeclaredAgeRange API |
 
 **Note:** The iOS DeclaredAgeRange API is only available on iOS 26.0+. On older iOS versions, the plugin will return an `UnsupportedPlatformException`. Your app can support older iOS versions and handle this gracefully.
-
-## Installation
-
-Add this to your package's `pubspec.yaml` file:
-
-```yaml
-dependencies:
-  age_range_signals: ^0.1.3
-```
-
-Then run:
-
-```bash
-flutter pub get
-```
 
 ## Platform Setup
 
