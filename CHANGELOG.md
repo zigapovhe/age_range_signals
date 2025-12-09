@@ -1,3 +1,11 @@
+## 0.2.0
+
+* **Android**: ⚠️ **CRITICAL UPDATE** - Bumped Play Age Signals API library version to non-beta stable release `com.google.android.play:age-signals:0.0.1`
+  ***ACTION REQUIRED**: Users must upgrade to version 0.2.0 or higher before January 1, 2026 
+  * **Why**: From January 1, 2026, all beta versions (0.0.1-beta*) of the Play Age Signals API will throw exceptions
+  * **Impact**: Apps using older versions of this plugin (with beta API) will stop working after January 1, 2026
+  * To receive live responses from January 1, 2026, you must upgrade to this library version (0.2.0 or higher)
+
 ## 0.1.3
 
 * **iOS**: Fixed compilation error: renamed `range.source` to `range.ageRangeDeclaration` to match Apple's DeclaredAgeRange API (#3)
