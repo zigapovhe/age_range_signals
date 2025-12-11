@@ -1,3 +1,13 @@
+## 0.3.0
+
+* **IMPORTANT**: Critical update to ensure compatibility with Google Play Age Signals API requirements (effective January 1, 2026)
+
+* **Android**: ⚠️ Google has **updated their requirements again** - the Play Age Signals API now requires version `0.0.2` or higher (previously `0.0.1` in v0.2.0). Beta versions and `0.0.1` will throw exceptions starting January 1, 2026. (thanks to @JenniO for reporting this in #7)
+  * Updated to `com.google.android.play:age-signals:0.0.2` (latest required version)
+  * Updated build tools to match Flutter's official plugins for improved compatibility and future-proofing
+
+* **Migration**: No code changes required - just update your dependency version in `pubspec.yaml`
+
 ## 0.2.0
 
 * **Android**: ⚠️ **CRITICAL UPDATE** - Bumped Play Age Signals API library version to non-beta stable release `com.google.android.play:age-signals:0.0.1` (thanks to @rokarnus for reporting this in #5)

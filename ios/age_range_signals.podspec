@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'age_range_signals'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = 'Flutter plugin for age verification.'
   s.description      = <<-DESC
 Flutter plugin for age verification supporting Google Play Age Signals API (Android) and Apple's DeclaredAgeRange API (iOS 26+).
