@@ -54,6 +54,36 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
           e.message ?? 'Plugin not initialized. Call initialize() first.',
           e.code,
         );
+      case 'MISSING_ENTITLEMENT':
+        return MissingEntitlementException(
+          e.message ?? 'Required entitlement is missing or not approved',
+          e.code,
+        );
+      case 'API_ERROR':
+        return ApiErrorException(
+          e.message ?? 'Platform API error occurred',
+          e.code,
+        );
+      case 'PLAY_SERVICES_ERROR':
+        return PlayServicesException(
+          e.message ?? 'Google Play Services is unavailable or outdated',
+          e.code,
+        );
+      case 'NETWORK_ERROR':
+        return NetworkErrorException(
+          e.message ?? 'Network error occurred',
+          e.code,
+        );
+      case 'USER_NOT_SIGNED_IN':
+        return UserNotSignedInException(
+          e.message ?? 'User is not signed in to Google account',
+          e.code,
+        );
+      case 'USER_CANCELLED':
+        return UserCancelledException(
+          e.message ?? 'User cancelled the age verification',
+          e.code,
+        );
       default:
         return AgeSignalsException(
           e.message ?? 'An error occurred',

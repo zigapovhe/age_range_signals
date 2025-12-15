@@ -86,6 +86,11 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         _error = 'Not Initialized: ${e.message}';
         _isLoading = false;
       });
+    } on MissingEntitlementException catch (e) {
+      setState(() {
+        _error = 'Missing Entitlement: ${e.message}';
+        _isLoading = false;
+      });
     } on AgeSignalsException catch (e) {
       setState(() {
         _error = 'Error: ${e.message}';

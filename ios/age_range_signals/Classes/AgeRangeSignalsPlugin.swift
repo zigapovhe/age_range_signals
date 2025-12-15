@@ -153,10 +153,58 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     ))
                 }
             } catch {
+                let nsError = error as NSError
+                let errorMessage = error.localizedDescription
+                let errorDomain = nsError.domain
+                let errorCode = nsError.code
+
+                // Check for specific error types
+                let isDeclaredAgeRangeError = errorDomain.contains("DeclaredAgeRange") ||
+                                             errorDomain.contains("AgeRangeService")
+
+                // User cancelled the prompt
+                if errorDomain == NSCocoaErrorDomain && errorCode == 3072 ||
+                   errorMessage.lowercased().contains("cancel") ||
+                   errorMessage.lowercased().contains("user abort") {
+                    result(FlutterError(
+                        code: "USER_CANCELLED",
+                        message: "User cancelled the age verification prompt",
+                        details: "Error: \(errorMessage) | Domain: \(errorDomain) | Code: \(errorCode)"
+                    ))
+                    return
+                }
+
+                // Entitlement error (error code 0 with DeclaredAgeRange domain)
+                let likelyEntitlementError = (errorCode == 0 && isDeclaredAgeRangeError) ||
+                                            errorMessage.lowercased().contains("entitlement") ||
+                                            errorMessage.lowercased().contains("not entitled")
+
+                if likelyEntitlementError {
+                    result(FlutterError(
+                        code: "MISSING_ENTITLEMENT",
+                        message: "DeclaredAgeRange API error (likely missing entitlement). Ensure the 'com.apple.developer.declared-age-range' entitlement is added to your app and approved by Apple.",
+                        details: "Error: \(errorMessage) | Domain: \(errorDomain) | Code: \(errorCode)"
+                    ))
+                    return
+                }
+
+                // Network errors
+                if errorDomain == NSURLErrorDomain ||
+                   errorMessage.lowercased().contains("network") ||
+                   errorMessage.lowercased().contains("connection") {
+                    result(FlutterError(
+                        code: "NETWORK_ERROR",
+                        message: "Network error: \(errorMessage)",
+                        details: "Domain: \(errorDomain) | Code: \(errorCode)"
+                    ))
+                    return
+                }
+
+                // Generic API error
                 result(FlutterError(
-                    code: "UNKNOWN_ERROR",
-                    message: error.localizedDescription,
-                    details: nil
+                    code: "API_ERROR",
+                    message: "DeclaredAgeRange API error: \(errorMessage)",
+                    details: "Domain: \(errorDomain) | Code: \(errorCode)"
                 ))
             }
         }

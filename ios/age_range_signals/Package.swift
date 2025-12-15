@@ -9,7 +9,7 @@ let package = Package(
         .iOS("13.0"),
     ],
     products: [
-        .library(name: "age_range_signals", targets: ["age_range_signals"]),
+        .library(name: "age-range-signals", targets: ["age_range_signals"]),
     ],
     targets: [
         .target(
