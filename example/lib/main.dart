@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 
 import 'package:age_range_signals/age_range_signals.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(const MyApp());
@@ -275,6 +275,10 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         return 'Verified (User is above age threshold)';
       case AgeSignalsStatus.supervised:
         return 'Supervised (User may be under age threshold)';
+      case AgeSignalsStatus.supervisedApprovalPending:
+        return 'Supervised (Awaiting guardian approval)';
+      case AgeSignalsStatus.supervisedApprovalDenied:
+        return 'Supervised (Guardian denied approval)';
       case AgeSignalsStatus.declined:
         return 'Declined (User chose not to share)';
       case AgeSignalsStatus.unknown:
