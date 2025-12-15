@@ -1,3 +1,7 @@
+## 0.4.1
+
+* Fixed code formatting issues to improve pub.dev score
+
 ## 0.4.0
 
 * **Android**: Added distinct status values for guardian approval states (#10, thanks to @kumamotone)

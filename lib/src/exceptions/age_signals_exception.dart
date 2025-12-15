@@ -33,7 +33,8 @@ class ApiNotAvailableException extends AgeSignalsException {
 /// Exception thrown when the platform version is incompatible.
 class UnsupportedPlatformException extends AgeSignalsException {
   /// Creates an [UnsupportedPlatformException].
-  const UnsupportedPlatformException(super.message, [super.code, super.details]);
+  const UnsupportedPlatformException(super.message,
+      [super.code, super.details]);
 }
 
 /// Exception thrown when the plugin has not been initialized.
