@@ -1,3 +1,19 @@
+## 0.4.0
+
+* **Android**: Added distinct status values for guardian approval states (#10, thanks to @kumamotone)
+  * `AgeSignalsStatus.supervisedApprovalPending` - awaiting guardian response
+  * `AgeSignalsStatus.supervisedApprovalDenied` - guardian denied access
+
+* **iOS**: Added regional eligibility check for iOS 26.2+ (#9, thanks to @rokarnus)
+  * Returns `AgeSignalsStatus.unknown` for users outside applicable regions
+  * Avoids unnecessary API calls when age verification is not available
+
+* **Error Handling**: Added 6 new exception types with detailed diagnostics
+  * `MissingEntitlementException`, `ApiErrorException`, `NetworkErrorException`
+  * `UserCancelledException`, `PlayServicesException`, `UserNotSignedInException`
+  * All exceptions now include a `details` field with platform-specific diagnostic information
+  * Enhanced error detection for Play Services, network issues, authentication, and user cancellation
+
 ## 0.3.0
 
 * **IMPORTANT**: Critical update to ensure compatibility with Google Play Age Signals API requirements (effective January 1, 2026)

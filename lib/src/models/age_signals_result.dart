@@ -140,7 +140,7 @@ enum AgeSignalsStatus {
   /// with the app.
   declined,
 
-  /// User is under parental supervision or below age threshold (Android only).
+  /// User is under parental supervision or below age threshold.
   ///
   /// On Android, indicates the user is managed by parental controls
   /// and may be below the required age threshold. On iOS, this value is

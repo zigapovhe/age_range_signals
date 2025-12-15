@@ -77,6 +77,27 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         }
 
         Task { @MainActor in
+            // Check if user is eligible for age features (iOS 26.2+)
+            // Returns unknown status if user is outside applicable region
+            if #available(iOS 26.2, *) {
+                do {
+                    let isEligible = try await AgeRangeService.shared.isEligibleForAgeFeatures
+                    if !isEligible {
+                        result([
+                            "status": "unknown",
+                            "ageLower": NSNull(),
+                            "ageUpper": NSNull(),
+                            "source": NSNull(),
+                            "installId": NSNull()
+                        ])
+                        return
+                    }
+                } catch {
+                    // If eligibility check fails (missing entitlement, error, etc.),
+                    // continue to main API call which will provide appropriate error
+                }
+            }
+
             do {
                 let response: AgeRangeService.Response
 

@@ -108,6 +108,12 @@ try {
     case AgeSignalsStatus.supervised:
       print('User is under parental supervision');
       break;
+    case AgeSignalsStatus.supervisedApprovalPending:
+      print('Waiting for guardian approval');
+      break;
+    case AgeSignalsStatus.supervisedApprovalDenied:
+      print('Guardian denied access');
+      break;
     case AgeSignalsStatus.declined:
       print('User declined to share age information');
       break;
@@ -125,11 +131,34 @@ try {
   if (result.installId != null) {
     print('Install ID: ${result.installId}');
   }
+} on MissingEntitlementException catch (e) {
+  // iOS: Entitlement not configured - show setup instructions
+  print('Setup required: ${e.message}');
+  print('Debug details: ${e.details}');
+} on UserCancelledException catch (e) {
+  // User chose not to verify - handle gracefully
+  print('User cancelled: ${e.message}');
+} on NetworkErrorException catch (e) {
+  // Network issue - retry or show offline mode
+  print('Network error: ${e.message}');
+} on PlayServicesException catch (e) {
+  // Android: Prompt user to update Play Services
+  print('Play Services required: ${e.message}');
+} on UserNotSignedInException catch (e) {
+  // Android: Prompt user to sign in
+  print('Sign in required: ${e.message}');
 } on ApiNotAvailableException catch (e) {
+  // API not available in this region or on this device
   print('API not available: ${e.message}');
 } on UnsupportedPlatformException catch (e) {
+  // Platform version too old
   print('Platform not supported: ${e.message}');
+} on ApiErrorException catch (e) {
+  // General API error - log for debugging
+  print('API error: ${e.message}');
+  print('Details: ${e.details}');
 } on AgeSignalsException catch (e) {
+  // Catch-all for any other errors
   print('Error: ${e.message}');
 }
 ```
@@ -241,10 +270,12 @@ Result object containing age verification information.
 
 Enum representing the verification status:
 
-- `verified` - User is verified as above age threshold
-- `supervised` - User is under parental supervision (Android) or the declared range does not meet configured age gates (iOS)
-- `declined` - User declined to share age (iOS)
-- `unknown` - Age information not available
+- `verified` - User is verified as above age threshold (both platforms)
+- `supervised` - User is under parental supervision (Android) or declared age is below configured age gates (iOS)
+- `supervisedApprovalPending` - User is supervised and awaiting guardian approval (Android only)
+- `supervisedApprovalDenied` - User is supervised and guardian denied approval (Android only)
+- `declined` - User declined to share age (iOS only)
+- `unknown` - Age information not available or user is outside applicable region (both platforms)
 
 ### AgeDeclarationSource
 
@@ -255,10 +286,32 @@ Enum representing the source of age declaration (iOS only):
 
 ### Exceptions
 
-- `AgeSignalsException` - Base exception class
-- `ApiNotAvailableException` - API is not available on the device
+The plugin provides specific exception types for different error scenarios, making error handling more precise:
+
+#### Base Exception
+- `AgeSignalsException` - Base exception class for all age signals errors
+
+#### Platform Availability
+- `ApiNotAvailableException` - API is not available on the device or region
 - `UnsupportedPlatformException` - Platform version does not support the API
-- `NotInitializedException` - Plugin not initialized (iOS)
+- `NotInitializedException` - Plugin not initialized (iOS - call `initialize()` first)
+
+#### Configuration Issues
+- `MissingEntitlementException` - Required entitlement missing or not approved (iOS - see Setup)
+
+#### User Actions
+- `UserCancelledException` - User cancelled the age verification prompt
+- `UserNotSignedInException` - User not signed in to Google account (Android)
+
+#### Technical Errors
+- `ApiErrorException` - General platform API error (includes full diagnostic details)
+- `NetworkErrorException` - Network or connection error
+- `PlayServicesException` - Google Play Services unavailable or outdated (Android)
+
+**All exceptions include:**
+- `message` - Human-readable error description
+- `code` - Error code for programmatic handling
+- `details` - Full diagnostic information (error domain, code, exception type)
 
 ## Legal Compliance
 
@@ -329,6 +382,29 @@ val fakeResult = AgeSignalsResult.builder()
 
 ### iOS Testing
 
+**Regional Eligibility (iOS 26.2+)**
+
+Starting with iOS 26.2, the plugin automatically checks if the user is eligible for age features using `isEligibleForAgeFeatures`. This determines if the user is in an applicable region (e.g., regulated US states):
+
+```dart
+final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+if (result.status == AgeSignalsStatus.unknown) {
+  // User is outside applicable region
+  // App should decide how to handle:
+  // - Allow access by default (permissive)
+  // - Use alternative verification
+  // - Deny access (restrictive)
+}
+```
+
+**Behavior:**
+- **iOS 26.2+**: Checks `isEligibleForAgeFeatures` first, returns `unknown` if user is outside applicable region
+- **iOS 26.0-26.1**: Uses try-catch fallback (check happens in API call)
+- **iOS < 26.0**: Throws `UnsupportedPlatformException`
+
+**Platform Version Testing**
+
 On iOS < 26.0, you'll receive an `UnsupportedPlatformException`, which is the expected behavior. Test your error handling:
 
 ```dart
@@ -354,28 +430,61 @@ try {
 - DeclaredAgeRange API only available on iOS 26.0+
 - Requires the `com.apple.developer.declared-age-range` entitlement
 - Throws `UnsupportedPlatformException` on iOS versions below 26.0
+- Returns `AgeSignalsStatus.unknown` for users outside applicable regions (iOS 26.2+)
 - User can decline to share age information
 - Cannot detect falsified birthdates in Apple ID
 
 ## Troubleshooting
 
-### Android
+### Common Errors
 
-**Error: API_NOT_AVAILABLE**
+**MissingEntitlementException (iOS)**
+- The `com.apple.developer.declared-age-range` entitlement is not configured or not approved by Apple
+- **Solution**:
+  1. Add `Runner.entitlements` file with the required entitlement (see iOS Setup)
+  2. Request the entitlement from Apple Developer Portal for your App ID
+  3. Wait for Apple's approval
+  4. Regenerate provisioning profiles
+
+**UserCancelledException**
+- User cancelled the age verification prompt
+- **Solution**: Handle gracefully - allow user to retry or use alternative verification
+
+**NetworkErrorException**
+- Network or connection error occurred
+- **Solution**: Check internet connection, retry, or show offline mode
+
+**PlayServicesException (Android)**
+- Google Play Services is unavailable or outdated
+- **Solution**: Prompt user to update Google Play Services
+
+**UserNotSignedInException (Android)**
+- User is not signed in to a Google account
+- **Solution**: Prompt user to sign in to their Google account
+
+### Platform-Specific Errors
+
+**Android**
+
+**API_NOT_AVAILABLE**
+- API is not available on the device or in this region
 - Ensure Google Play Services is installed and up to date
 - Verify the device has an active internet connection
-- Check that the device is running in a supported region
+- After January 1, 2026, check if device is in a supported US state
 
-### iOS
+**iOS**
 
-**Error: UNSUPPORTED_PLATFORM**
+**UNSUPPORTED_PLATFORM**
 - This error is expected on iOS versions below 26.0
 - The DeclaredAgeRange API is only available on iOS 26.0+
 - Handle this gracefully in your app (e.g., use alternative age verification or skip the check)
-- Verify the app has the required entitlement if running on iOS 26.0+
 
-**Error: NOT_INITIALIZED**
+**NOT_INITIALIZED**
 - Call `initialize()` with age gates before calling `checkAgeSignals()`
+
+**AgeSignalsStatus.unknown**
+- On iOS 26.2+, indicates user is outside applicable region (e.g., not in regulated US states)
+- App should decide how to handle based on requirements
 
 ## Example App
 
