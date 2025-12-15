@@ -84,8 +84,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                     val status = when (fakeResult.userStatus()) {
                         AgeSignalsVerificationStatus.VERIFIED -> "verified"
                         AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
                         AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
                         else -> "unknown"
                     }
@@ -118,8 +118,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 val status = when (ageSignalsResult.userStatus()) {
                     AgeSignalsVerificationStatus.VERIFIED -> "verified"
                     AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
                     AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
                     else -> "unknown"
                 }
