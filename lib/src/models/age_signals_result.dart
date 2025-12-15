@@ -140,12 +140,25 @@ enum AgeSignalsStatus {
   /// with the app.
   declined,
 
-  /// User is under parental supervision or below age threshold (Android only).
+  /// User is under parental supervision or below age threshold.
   ///
   /// On Android, indicates the user is managed by parental controls
   /// and may be below the required age threshold. On iOS, this value is
   /// returned when the declared age range does not meet the configured gates.
   supervised,
+
+  /// User is supervised and awaiting guardian approval (Android only).
+  ///
+  /// On Android, this indicates the user is under parental controls and
+  /// a request for access has been sent to the guardian, but the guardian
+  /// has not yet responded.
+  supervisedApprovalPending,
+
+  /// User is supervised and guardian denied approval (Android only).
+  ///
+  /// On Android, this indicates the user is under parental controls and
+  /// the guardian has explicitly denied the access request.
+  supervisedApprovalDenied,
 }
 
 /// Source of the age declaration (iOS only).

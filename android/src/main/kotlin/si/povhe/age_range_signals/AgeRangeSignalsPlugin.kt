@@ -84,8 +84,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                     val status = when (fakeResult.userStatus()) {
                         AgeSignalsVerificationStatus.VERIFIED -> "verified"
                         AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
+                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
                         AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
                         else -> "unknown"
                     }
@@ -102,9 +102,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 .addOnFailureListener { fakeException ->
                     result.error(
-                        "UNKNOWN_ERROR",
-                        fakeException.message ?: "An error occurred",
-                        null
+                        "API_ERROR",
+                        fakeException.message ?: "An error occurred in fake manager",
+                        "Exception type: ${fakeException.javaClass.simpleName}"
                     )
                 }
             return
@@ -118,8 +118,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 val status = when (ageSignalsResult.userStatus()) {
                     AgeSignalsVerificationStatus.VERIFIED -> "verified"
                     AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervised"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervised"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
+                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
                     AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
                     else -> "unknown"
                 }
@@ -135,10 +135,37 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(resultMap)
             }
             .addOnFailureListener { exception ->
+                // Parse exception to provide more specific error codes
+                val errorMessage = exception.message ?: "An error occurred while checking age signals"
+                val errorCode = when {
+                    // Google Play Services related errors
+                    errorMessage.contains("GooglePlayServices", ignoreCase = true) ||
+                    errorMessage.contains("Play Services", ignoreCase = true) -> "PLAY_SERVICES_ERROR"
+
+                    // Network related errors
+                    errorMessage.contains("network", ignoreCase = true) ||
+                    errorMessage.contains("connection", ignoreCase = true) ||
+                    errorMessage.contains("timeout", ignoreCase = true) -> "NETWORK_ERROR"
+
+                    // User not signed in
+                    errorMessage.contains("not signed in", ignoreCase = true) ||
+                    errorMessage.contains("authentication", ignoreCase = true) -> "USER_NOT_SIGNED_IN"
+
+                    // Regional availability
+                    errorMessage.contains("not available", ignoreCase = true) ||
+                    errorMessage.contains("region", ignoreCase = true) -> "API_NOT_AVAILABLE"
+
+                    // User cancelled
+                    errorMessage.contains("cancel", ignoreCase = true) ||
+                    errorMessage.contains("abort", ignoreCase = true) -> "USER_CANCELLED"
+
+                    else -> "API_ERROR"
+                }
+
                 result.error(
-                    "UNKNOWN_ERROR",
-                    exception.message ?: "An error occurred while checking age signals",
-                    null
+                    errorCode,
+                    errorMessage,
+                    "Exception type: ${exception.javaClass.simpleName}"
                 )
             }
     }

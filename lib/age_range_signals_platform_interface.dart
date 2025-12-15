@@ -6,7 +6,6 @@ import 'src/models/age_signals_result.dart';
 abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// Constructs a AgeRangeSignalsPlatform.
   AgeRangeSignalsPlatform() : super(token: _token);
-
   static final Object _token = Object();
 
   static AgeRangeSignalsPlatform _instance = MethodChannelAgeRangeSignals();

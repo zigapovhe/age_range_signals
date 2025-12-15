@@ -90,6 +90,42 @@ void main() {
       expect(result.installId, 'test-install-id');
     });
 
+    test('creates from map with supervisedApprovalPending status', () {
+      final map = {
+        'status': 'supervisedApprovalPending',
+        'ageLower': null,
+        'ageUpper': null,
+        'source': null,
+        'installId': 'test-install-id',
+      };
+
+      final result = AgeSignalsResult.fromMap(map);
+
+      expect(result.status, AgeSignalsStatus.supervisedApprovalPending);
+      expect(result.ageLower, null);
+      expect(result.ageUpper, null);
+      expect(result.source, null);
+      expect(result.installId, 'test-install-id');
+    });
+
+    test('creates from map with supervisedApprovalDenied status', () {
+      final map = {
+        'status': 'supervisedApprovalDenied',
+        'ageLower': null,
+        'ageUpper': null,
+        'source': null,
+        'installId': 'test-install-id',
+      };
+
+      final result = AgeSignalsResult.fromMap(map);
+
+      expect(result.status, AgeSignalsStatus.supervisedApprovalDenied);
+      expect(result.ageLower, null);
+      expect(result.ageUpper, null);
+      expect(result.source, null);
+      expect(result.installId, 'test-install-id');
+    });
+
     test('toMap converts correctly', () {
       const result = AgeSignalsResult(
         status: AgeSignalsStatus.supervised,
@@ -105,6 +141,36 @@ void main() {
       expect(map['ageLower'], 10);
       expect(map['ageUpper'], 12);
       expect(map['source'], 'selfDeclared');
+      expect(map['installId'], 'test-id');
+    });
+
+    test('toMap converts supervisedApprovalPending correctly', () {
+      const result = AgeSignalsResult(
+        status: AgeSignalsStatus.supervisedApprovalPending,
+        installId: 'test-id',
+      );
+
+      final map = result.toMap();
+
+      expect(map['status'], 'supervisedApprovalPending');
+      expect(map['ageLower'], null);
+      expect(map['ageUpper'], null);
+      expect(map['source'], null);
+      expect(map['installId'], 'test-id');
+    });
+
+    test('toMap converts supervisedApprovalDenied correctly', () {
+      const result = AgeSignalsResult(
+        status: AgeSignalsStatus.supervisedApprovalDenied,
+        installId: 'test-id',
+      );
+
+      final map = result.toMap();
+
+      expect(map['status'], 'supervisedApprovalDenied');
+      expect(map['ageLower'], null);
+      expect(map['ageUpper'], null);
+      expect(map['source'], null);
       expect(map['installId'], 'test-id');
     });
 
