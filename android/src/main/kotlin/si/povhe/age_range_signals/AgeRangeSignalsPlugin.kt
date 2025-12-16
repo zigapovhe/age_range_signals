@@ -37,10 +37,21 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
 
-        // Set up a default test result for verified user
+        // Set up a default test result for supervised user
+        // This demonstrates age range functionality in the example app
+        //
+        // IMPORTANT: Age ranges (13-15 here) are determined by Google Play's
+        // parental control settings, NOT by your app's configured age gates.
+        // Android ignores the ageGates parameter - it's iOS-only.
+        // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
+        //
+        // To test verified users (18+), change to VERIFIED status and omit
+        // setAgeLower(), setAgeUpper(), setInstallId() to leave them as null
         val fakeResult = AgeSignalsResult.builder()
-            .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
+            .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
             .setInstallId("test_install_id_12345")
+            .setAgeLower(13)
+            .setAgeUpper(15)
             .build()
 
         fakeManager.setNextAgeSignalsResult(fakeResult)
@@ -93,8 +104,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                     val resultMap = mapOf(
                         "status" to status,
                         "installId" to fakeResult.installId(),
-                        "ageLower" to null,
-                        "ageUpper" to null,
+                        "ageLower" to fakeResult.ageLower(),
+                        "ageUpper" to fakeResult.ageUpper(),
                         "source" to null
                     )
 
@@ -127,8 +138,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 val resultMap = mapOf(
                     "status" to status,
                     "installId" to ageSignalsResult.installId(),
-                    "ageLower" to null,
-                    "ageUpper" to null,
+                    "ageLower" to ageSignalsResult.ageLower(),
+                    "ageUpper" to ageSignalsResult.ageUpper(),
                     "source" to null
                 )
 

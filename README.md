@@ -65,7 +65,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
-**Important:** The Play Age Signals API is currently in beta and will return mock data until January 1, 2026. After this date, it will return real age verification data in supported US states.
+**Important:** The Play Age Signals API is currently in beta. Before January 1, 2026, the real API returns a "Not yet implemented" error. Use `useMockData: true` to test with `FakeAgeSignalsManager`. After January 1, 2026, the real API will return actual age verification data in supported US states.
 
 ### iOS
 
@@ -122,7 +122,9 @@ try {
       break;
   }
 
-  // iOS-specific: Access age range
+  // Access age range (both platforms)
+  // iOS: Available when user consents to share
+  // Android: Available for supervised users
   if (result.ageLower != null && result.ageUpper != null) {
     print('Age range: ${result.ageLower} - ${result.ageUpper}');
   }
@@ -261,10 +263,35 @@ Result object containing age verification information.
 #### Properties
 
 - `AgeSignalsStatus status` - The verification status
-- `int? ageLower` - Lower bound of age range (iOS only)
-- `int? ageUpper` - Upper bound of age range (iOS only)
+- `int? ageLower` - Lower bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
+- `int? ageUpper` - Upper bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
 - `String? installId` - Installation identifier (Android only)
+
+#### When are ageLower and ageUpper populated?
+
+**Android (Google Play Age Signals API):**
+
+| userStatus | ageLower/ageUpper | installId | Notes |
+|------------|-------------------|-----------|-------|
+| `verified` | `null` / `null` | `null` | User is 18+, no supervision needed |
+| `supervised` | Populated / Populated† | Populated | Supervised account with approved age range |
+| `supervisedApprovalPending` | Populated / Populated† | Populated | Awaiting parent approval for changes |
+| `supervisedApprovalDenied` | Populated / Populated† | Populated | Parent denied changes; use previous approved age |
+| `unknown` | `null` / `null` | `null` | User unverified/unsupervised, or API unavailable in region |
+
+**†Edge case:** For supervised users, `ageUpper` may be `null` if the parent-attested age is over 18 (e.g., `ageLower=18, ageUpper=null`).
+
+**Note:** On Android, age ranges are determined by Google Play's parental control settings and returned as predefined age bands (0-12, 13-15, 16-17, 18+). The `ageGates` parameter is **not used** on Android - it's iOS-only. You cannot customize these age bands through the plugin; they're controlled by Google Play and can optionally be customized in Play Console.
+
+**iOS (DeclaredAgeRange API):**
+
+| userStatus | ageLower/ageUpper | source | Notes |
+|------------|-------------------|--------|-------|
+| `verified` | Populated | Populated | User consented; lower bound ≥ highest configured gate |
+| `supervised` | Populated | Populated | User consented; lower bound < highest configured gate |
+| `declined` | `null` | `null` | User declined to share age information |
+| `unknown` | `null` | `null` | User outside applicable region (iOS 26.2+) |
 
 ### AgeSignalsStatus
 
@@ -359,8 +386,11 @@ await AgeRangeSignals.instance.initialize(
 );
 
 final result = await AgeRangeSignals.instance.checkAgeSignals();
-print(result.status); // AgeSignalsStatus.verified (when useMockData: true)
-print(result.installId); // "test_install_id_12345" (when useMockData: true)
+// When useMockData: true, returns a supervised user (13-15) by default
+print(result.status);    // AgeSignalsStatus.supervised
+print(result.ageLower);  // 13
+print(result.ageUpper);  // 15
+print(result.installId); // "test_install_id_12345"
 ```
 
 **How it works:**
@@ -371,14 +401,23 @@ print(result.installId); // "test_install_id_12345" (when useMockData: true)
 **To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
 
 ```kotlin
-// For testing supervised users
+// Default: supervised user aged 13-15 (demonstrates age range feature)
 val fakeResult = AgeSignalsResult.builder()
     .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
     .setAgeLower(13)
-    .setAgeUpper(17)
-    .setInstallId("test_install_id")
+    .setAgeUpper(15)
+    .setInstallId("test_install_id_12345")
+    .build()
+
+// For testing verified users (18+)
+val fakeResult = AgeSignalsResult.builder()
+    .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
+    // Don't call setAgeLower(), setAgeUpper(), or setInstallId()
+    // to leave them as null
     .build()
 ```
+
+**Note**: The Google Play Age Signals API returns `ageLower` and `ageUpper` as integer values for supervised users. These represent the bounds of predefined age bands (default bands: 0-12, 13-15, 16-17, and 18+). For example, a supervised user aged 13-15 would have `ageLower=13` and `ageUpper=15`. For verified users (18+), these values are typically `null` since they don't need supervision. Age bands can be customized in Play Console based on your app's requirements.
 
 ### iOS Testing
 

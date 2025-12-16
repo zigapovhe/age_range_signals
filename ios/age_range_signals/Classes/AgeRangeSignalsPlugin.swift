@@ -100,33 +100,29 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
             do {
                 let response: AgeRangeService.Response
-
-                switch ageGates.count {
+                switch self.ageGates.count {
                 case 1:
                     response = try await AgeRangeService.shared.requestAgeRange(
-                        ageGates: ageGates[0],
+                        ageGates: self.ageGates[0],
                         in: presenter
                     )
                 case 2:
                     response = try await AgeRangeService.shared.requestAgeRange(
-                        ageGates: ageGates[0],
-                        ageGates[1],
+                        ageGates: self.ageGates[0],
+                        self.ageGates[1],
                         in: presenter
                     )
                 case 3:
                     response = try await AgeRangeService.shared.requestAgeRange(
-                        ageGates: ageGates[0],
-                        ageGates[1],
-                        ageGates[2],
+                        ageGates: self.ageGates[0],
+                        self.ageGates[1],
+                        self.ageGates[2],
                         in: presenter
                     )
                 default:
-                    result(FlutterError(
-                        code: "INVALID_AGE_GATES",
-                        message: "DeclaredAgeRange supports 1 to 3 age gates",
-                        details: nil
-                    ))
-                    return
+                    throw NSError(domain: "AgeRangeSignals", code: -1, userInfo: [
+                        NSLocalizedDescriptionKey: "DeclaredAgeRange supports 1 to 3 age gates"
+                    ])
                 }
 
                 switch response {
