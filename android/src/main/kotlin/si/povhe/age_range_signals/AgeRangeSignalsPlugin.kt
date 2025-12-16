@@ -37,13 +37,20 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
 
-        // Set up a default test result for verified user (18+)
-        // Verified users typically have null age ranges since they're adults
+        // Set up a default test result for supervised user
+        // This demonstrates age range functionality in the example app
+        //
+        // IMPORTANT: Age ranges (13-15 here) are determined by Google Play's
+        // parental control settings, NOT by your app's configured age gates.
+        // Android ignores the ageGates parameter - it's iOS-only.
+        // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
+        //
+        // To test verified users (18+), change to VERIFIED status with null age values
         val fakeResult = AgeSignalsResult.builder()
-            .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
+            .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
             .setInstallId("test_install_id_12345")
-            .setAgeLower(null)
-            .setAgeUpper(null)
+            .setAgeLower(13)
+            .setAgeUpper(15)
             .build()
 
         fakeManager.setNextAgeSignalsResult(fakeResult)

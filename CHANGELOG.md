@@ -4,7 +4,9 @@
   * Previously these fields were hardcoded to `null`, now they correctly return age range values for supervised users
   * Age ranges are returned as integer bounds (e.g., `ageLower=13`, `ageUpper=15` for a 13-15 age band)
   * Values are `null` for verified users (18+) as expected
-* **Documentation**: Updated to reflect that `ageLower` and `ageUpper` are available on both Android and iOS platforms
+* **iOS**: Simplified plugin implementation
+* **Example App**: Added iOS warning explaining that example app cannot run DeclaredAgeRange API without proper entitlement
+* **Documentation**: Updated README to accurately document mock data behavior (returns supervised_13_15 by default, not verified)
 
 ## 0.4.1
 

@@ -283,6 +283,8 @@ Result object containing age verification information.
 
 **†Edge case:** For supervised users, `ageUpper` may be `null` if the parent-attested age is over 18 (e.g., `ageLower=18, ageUpper=null`).
 
+**Note:** On Android, age ranges are determined by Google Play's parental control settings and returned as predefined age bands (0-12, 13-15, 16-17, 18+). The `ageGates` parameter is **not used** on Android - it's iOS-only. You cannot customize these age bands through the plugin; they're controlled by Google Play and can optionally be customized in Play Console.
+
 **iOS (DeclaredAgeRange API):**
 
 | userStatus | ageLower/ageUpper | source | Notes |
@@ -385,8 +387,11 @@ await AgeRangeSignals.instance.initialize(
 );
 
 final result = await AgeRangeSignals.instance.checkAgeSignals();
-print(result.status); // AgeSignalsStatus.verified (when useMockData: true)
-print(result.installId); // "test_install_id_12345" (when useMockData: true)
+// When useMockData: true, returns a supervised user (13-15) by default
+print(result.status);    // AgeSignalsStatus.supervised
+print(result.ageLower);  // 13
+print(result.ageUpper);  // 15
+print(result.installId); // "test_install_id_12345"
 ```
 
 **How it works:**
@@ -397,12 +402,20 @@ print(result.installId); // "test_install_id_12345" (when useMockData: true)
 **To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
 
 ```kotlin
-// For testing supervised users with age range
+// Default: supervised user aged 13-15 (demonstrates age range feature)
 val fakeResult = AgeSignalsResult.builder()
     .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
     .setAgeLower(13)
-    .setAgeUpper(17)
-    .setInstallId("test_install_id")
+    .setAgeUpper(15)
+    .setInstallId("test_install_id_12345")
+    .build()
+
+// For testing verified users (18+)
+val fakeResult = AgeSignalsResult.builder()
+    .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
+    .setAgeLower(null)
+    .setAgeUpper(null)
+    .setInstallId(null)
     .build()
 ```
 

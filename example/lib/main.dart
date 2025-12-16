@@ -33,6 +33,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   String? _error;
   bool _isLoading = false;
   bool _isInitialized = false;
+  final bool _isIos = Platform.isIOS;
 
   final List<int> _ageGates = [13, 16, 18];
 
@@ -114,6 +115,10 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildInfoCard(),
+            if (_isIos) ...[
+              const SizedBox(height: 12),
+              _buildIosWarningCard(),
+            ],
             const SizedBox(height: 16),
             _buildCheckButton(),
             const SizedBox(height: 24),
@@ -171,11 +176,47 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
 
   Widget _buildCheckButton() {
     return FilledButton.icon(
-      onPressed: _isLoading || !_isInitialized ? null : _checkAgeSignals,
+      onPressed:
+          _isLoading || !_isInitialized || _isIos ? null : _checkAgeSignals,
       icon: const Icon(Icons.verified_user),
-      label: const Text('Check Age Signals'),
+      label: Text(_isIos ? 'Unavailable on iOS in example app' : 'Check Age Signals'),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+    );
+  }
+
+  Widget _buildIosWarningCard() {
+    return Card(
+      color: Colors.orange[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange[700]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'iOS entitlement not available in example',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.orange[800],
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'The sample app does not include the com.apple.developer.declared-age-range entitlement or a signed identifier, so the DeclaredAgeRange API cannot run here. Build your own app with the entitlement to test on iOS.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
