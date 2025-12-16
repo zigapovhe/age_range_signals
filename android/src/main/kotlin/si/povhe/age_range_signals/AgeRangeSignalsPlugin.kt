@@ -45,7 +45,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
         // Android ignores the ageGates parameter - it's iOS-only.
         // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
         //
-        // To test verified users (18+), change to VERIFIED status with null age values
+        // To test verified users (18+), change to VERIFIED status and omit
+        // setAgeLower(), setAgeUpper(), setInstallId() to leave them as null
         val fakeResult = AgeSignalsResult.builder()
             .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
             .setInstallId("test_install_id_12345")

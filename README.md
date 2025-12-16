@@ -65,7 +65,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
-**Important:** The Play Age Signals API is currently in beta and will return mock data until January 1, 2026. After this date, it will return real age verification data in supported US states.
+**Important:** The Play Age Signals API is currently in beta. Before January 1, 2026, the real API returns a "Not yet implemented" error. Use `useMockData: true` to test with `FakeAgeSignalsManager`. After January 1, 2026, the real API will return actual age verification data in supported US states.
 
 ### iOS
 
@@ -412,9 +412,8 @@ val fakeResult = AgeSignalsResult.builder()
 // For testing verified users (18+)
 val fakeResult = AgeSignalsResult.builder()
     .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
-    .setAgeLower(null)
-    .setAgeUpper(null)
-    .setInstallId(null)
+    // Don't call setAgeLower(), setAgeUpper(), or setInstallId()
+    // to leave them as null
     .build()
 ```
 
