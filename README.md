@@ -278,8 +278,7 @@ Result object containing age verification information.
 | `supervised` | Populated / Populated† | Populated | Supervised account with approved age range |
 | `supervisedApprovalPending` | Populated / Populated† | Populated | Awaiting parent approval for changes |
 | `supervisedApprovalDenied` | Populated / Populated† | Populated | Parent denied changes; use previous approved age |
-| `unknown` | `null` / `null` | `null` | User unverified/unsupervised in applicable region |
-| `null` | `null` / `null` | `null` | User outside applicable jurisdictions |
+| `unknown` | `null` / `null` | `null` | User unverified/unsupervised, or API unavailable in region |
 
 **†Edge case:** For supervised users, `ageUpper` may be `null` if the parent-attested age is over 18 (e.g., `ageLower=18, ageUpper=null`).
 
