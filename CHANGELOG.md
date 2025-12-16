@@ -1,3 +1,11 @@
+## 0.4.2
+
+* **Android**: Fixed `ageLower` and `ageUpper` to read actual values from Google Play Age Signals API
+  * Previously these fields were hardcoded to `null`, now they correctly return age range values for supervised users
+  * Age ranges are returned as integer bounds (e.g., `ageLower=13`, `ageUpper=15` for a 13-15 age band)
+  * Values are `null` for verified users (18+) as expected
+* **Documentation**: Updated to reflect that `ageLower` and `ageUpper` are available on both Android and iOS platforms
+
 ## 0.4.1
 
 * Fixed code formatting issues to improve pub.dev score

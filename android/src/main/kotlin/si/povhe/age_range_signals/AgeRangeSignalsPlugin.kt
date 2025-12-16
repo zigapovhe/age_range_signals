@@ -37,10 +37,13 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
 
-        // Set up a default test result for verified user
+        // Set up a default test result for verified user (18+)
+        // Verified users typically have null age ranges since they're adults
         val fakeResult = AgeSignalsResult.builder()
             .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
             .setInstallId("test_install_id_12345")
+            .setAgeLower(null)
+            .setAgeUpper(null)
             .build()
 
         fakeManager.setNextAgeSignalsResult(fakeResult)
@@ -93,8 +96,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                     val resultMap = mapOf(
                         "status" to status,
                         "installId" to fakeResult.installId(),
-                        "ageLower" to null,
-                        "ageUpper" to null,
+                        "ageLower" to fakeResult.ageLower(),
+                        "ageUpper" to fakeResult.ageUpper(),
                         "source" to null
                     )
 
@@ -127,8 +130,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 val resultMap = mapOf(
                     "status" to status,
                     "installId" to ageSignalsResult.installId(),
-                    "ageLower" to null,
-                    "ageUpper" to null,
+                    "ageLower" to ageSignalsResult.ageLower(),
+                    "ageUpper" to ageSignalsResult.ageUpper(),
                     "source" to null
                 )
 

@@ -122,7 +122,9 @@ try {
       break;
   }
 
-  // iOS-specific: Access age range
+  // Access age range (both platforms)
+  // iOS: Available when user consents to share
+  // Android: Available for supervised users
   if (result.ageLower != null && result.ageUpper != null) {
     print('Age range: ${result.ageLower} - ${result.ageUpper}');
   }
@@ -261,10 +263,34 @@ Result object containing age verification information.
 #### Properties
 
 - `AgeSignalsStatus status` - The verification status
-- `int? ageLower` - Lower bound of age range (iOS only)
-- `int? ageUpper` - Upper bound of age range (iOS only)
+- `int? ageLower` - Lower bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
+- `int? ageUpper` - Upper bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
 - `String? installId` - Installation identifier (Android only)
+
+#### When are ageLower and ageUpper populated?
+
+**Android (Google Play Age Signals API):**
+
+| userStatus | ageLower/ageUpper | installId | Notes |
+|------------|-------------------|-----------|-------|
+| `verified` | `null` / `null` | `null` | User is 18+, no supervision needed |
+| `supervised` | Populated / Populated† | Populated | Supervised account with approved age range |
+| `supervisedApprovalPending` | Populated / Populated† | Populated | Awaiting parent approval for changes |
+| `supervisedApprovalDenied` | Populated / Populated† | Populated | Parent denied changes; use previous approved age |
+| `unknown` | `null` / `null` | `null` | User unverified/unsupervised in applicable region |
+| `null` | `null` / `null` | `null` | User outside applicable jurisdictions |
+
+**†Edge case:** For supervised users, `ageUpper` may be `null` if the parent-attested age is over 18 (e.g., `ageLower=18, ageUpper=null`).
+
+**iOS (DeclaredAgeRange API):**
+
+| userStatus | ageLower/ageUpper | source | Notes |
+|------------|-------------------|--------|-------|
+| `verified` | Populated | Populated | User consented; lower bound ≥ highest configured gate |
+| `supervised` | Populated | Populated | User consented; lower bound < highest configured gate |
+| `declined` | `null` | `null` | User declined to share age information |
+| `unknown` | `null` | `null` | User outside applicable region (iOS 26.2+) |
 
 ### AgeSignalsStatus
 
@@ -371,7 +397,7 @@ print(result.installId); // "test_install_id_12345" (when useMockData: true)
 **To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
 
 ```kotlin
-// For testing supervised users
+// For testing supervised users with age range
 val fakeResult = AgeSignalsResult.builder()
     .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
     .setAgeLower(13)
@@ -379,6 +405,8 @@ val fakeResult = AgeSignalsResult.builder()
     .setInstallId("test_install_id")
     .build()
 ```
+
+**Note**: The Google Play Age Signals API returns `ageLower` and `ageUpper` as integer values for supervised users. These represent the bounds of predefined age bands (default bands: 0-12, 13-15, 16-17, and 18+). For example, a supervised user aged 13-15 would have `ageLower=13` and `ageUpper=15`. For verified users (18+), these values are typically `null` since they don't need supervision. Age bands can be customized in Play Console based on your app's requirements.
 
 ### iOS Testing
 

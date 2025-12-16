@@ -16,16 +16,18 @@ class AgeSignalsResult {
   /// The verification status returned by the platform.
   final AgeSignalsStatus status;
 
-  /// The lower bound of the user's age range (iOS only).
+  /// The lower bound of the user's age range.
   ///
-  /// Available when user consents to share age information on iOS.
-  /// May be null if user declined or on Android.
+  /// On iOS, available when user consents to share age information.
+  /// On Android, available for supervised users (based on parental controls).
+  /// May be null if user declined (iOS) or if not available from the platform.
   final int? ageLower;
 
-  /// The upper bound of the user's age range (iOS only).
+  /// The upper bound of the user's age range.
   ///
-  /// Available when user consents to share age information on iOS.
-  /// May be null if user declined or on Android.
+  /// On iOS, available when user consents to share age information.
+  /// On Android, available for supervised users (based on parental controls).
+  /// May be null if user declined (iOS) or if not available from the platform.
   final int? ageUpper;
 
   /// The source of the age declaration (iOS only).

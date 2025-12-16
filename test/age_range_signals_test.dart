@@ -22,11 +22,38 @@ class MockAgeRangeSignalsPlatform
     if (!_initialized) {
       throw const NotInitializedException('Not initialized');
     }
+    // Mock VERIFIED user (18+) - age values should be null
     return const AgeSignalsResult(
       status: AgeSignalsStatus.verified,
-      ageLower: 18,
-      ageUpper: 99,
+      ageLower: null,
+      ageUpper: null,
       source: AgeDeclarationSource.selfDeclared,
+    );
+  }
+}
+
+class MockAgeRangeSignalsPlatformSupervised
+    with MockPlatformInterfaceMixin
+    implements AgeRangeSignalsPlatform {
+  bool _initialized = false;
+
+  @override
+  Future<void> initialize(
+      {List<int>? ageGates, bool useMockData = false}) async {
+    _initialized = true;
+  }
+
+  @override
+  Future<AgeSignalsResult> checkAgeSignals() async {
+    if (!_initialized) {
+      throw const NotInitializedException('Not initialized');
+    }
+    // Mock SUPERVISED user (Android) - age ranges are populated
+    return const AgeSignalsResult(
+      status: AgeSignalsStatus.supervised,
+      ageLower: 13,
+      ageUpper: 15,
+      installId: 'test-install-id',
     );
   }
 }
@@ -53,13 +80,13 @@ void main() {
       expect(mockPlatform._ageGates, [13, 16, 18]);
     });
 
-    test('checkAgeSignals returns result when initialized', () async {
+    test('checkAgeSignals returns verified result with null ages', () async {
       await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
       final result = await AgeRangeSignals.instance.checkAgeSignals();
 
       expect(result.status, AgeSignalsStatus.verified);
-      expect(result.ageLower, 18);
-      expect(result.ageUpper, 99);
+      expect(result.ageLower, null); // VERIFIED users have null age values
+      expect(result.ageUpper, null); // VERIFIED users have null age values
       expect(result.source, AgeDeclarationSource.selfDeclared);
     });
 
@@ -68,6 +95,25 @@ void main() {
         () => AgeRangeSignals.instance.checkAgeSignals(),
         throwsA(isA<NotInitializedException>()),
       );
+    });
+  });
+
+  group('AgeRangeSignals - Android behavior', () {
+    late MockAgeRangeSignalsPlatformSupervised mockPlatform;
+
+    setUp(() {
+      mockPlatform = MockAgeRangeSignalsPlatformSupervised();
+      AgeRangeSignalsPlatform.instance = mockPlatform;
+    });
+
+    test('SUPERVISED user returns age range values', () async {
+      await AgeRangeSignals.instance.initialize();
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.supervised);
+      expect(result.ageLower, 13); // SUPERVISED users have age ranges
+      expect(result.ageUpper, 15); // SUPERVISED users have age ranges
+      expect(result.installId, 'test-install-id');
     });
   });
 
