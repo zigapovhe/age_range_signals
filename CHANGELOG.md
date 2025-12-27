@@ -1,3 +1,23 @@
+## 0.5.0
+
+* **Android**: Added `mockData` parameter for customizable testing
+  * New `AgeSignalsMockData` class allows testing different scenarios
+  * Uses Google's official `FakeAgeSignalsManager` from `com.google.android.play.agesignals.testing` package
+  * Can customize status, age ranges, and installId for testing
+  * Defaults to supervised user (13-15) for backward compatibility with existing tests
+
+* **Documentation**: Major updates and improvements
+  * Added Texas SB 2420 federal court injunction notice (December 23, 2025)
+  * Comprehensive testing documentation for both platforms
+  * Clarified that `mockData` is Android-only (iOS has no official testing utilities from Apple)
+  * Updated README with accurate testing requirements and platform-specific limitations
+  * Improved example app comments to explain platform differences
+
+* **iOS**: No changes
+  * Continues to ignore `useMockData` and `mockData` parameters (same as 0.4.2)
+  * Apple does not provide testing utilities for DeclaredAgeRange API
+  * iOS testing requires real iOS 26.2+ devices with actual Apple IDs
+
 ## 0.4.2
 
 * **Android**: Fixed `ageLower` and `ageUpper` to read actual values from Google Play Age Signals API
