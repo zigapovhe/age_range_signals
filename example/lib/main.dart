@@ -218,7 +218,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
               runSpacing: 8,
               children: [
                 _buildScenarioChip(
-                  'Supervised 13-15',
+                  'Default (Supervised 13-15)',
                   AgeSignalsMockData(
                     status: AgeSignalsStatus.supervised,
                     ageLower: 13,

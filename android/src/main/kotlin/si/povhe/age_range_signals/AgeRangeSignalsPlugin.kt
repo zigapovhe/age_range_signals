@@ -46,11 +46,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
         // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
         val mockDataMap = mockData
 
-        // Extract mock data values or use defaults
+        // Extract status first
         val statusString = mockDataMap?.get("status") as? String ?: "supervised"
-        val ageLower = mockDataMap?.get("ageLower") as? Int ?: 13
-        val ageUpper = mockDataMap?.get("ageUpper") as? Int ?: 15
-        val installId = mockDataMap?.get("installId") as? String ?: "test_install_id_12345"
 
         // Parse status string to enum
         val userStatus = when (statusString) {
@@ -67,9 +64,14 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
 
         // Only set age range and installId if status is supervised (or similar states)
         // For verified status, these are typically null
+        // Extract these values only when needed to avoid unnecessary work
         if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED) {
+            val ageLower = mockDataMap?.get("ageLower") as? Int ?: 13
+            val ageUpper = mockDataMap?.get("ageUpper") as? Int ?: 15
+            val installId = mockDataMap?.get("installId") as? String ?: "test_install_id_12345"
+
             resultBuilder.setAgeLower(ageLower)
             resultBuilder.setAgeUpper(ageUpper)
             resultBuilder.setInstallId(installId)
