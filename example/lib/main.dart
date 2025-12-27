@@ -175,7 +175,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             const SizedBox(height: 8),
             Text(
               Platform.isAndroid
-                  ? 'Note: This example uses mock data (useMockData: true) for testing. You can test different scenarios using the chips below. Before January 1, 2026, the real Play Age Signals API returns a "Not yet implemented" error.'
+                  ? 'Note: This example uses mock data (useMockData: true) for testing. You can test different scenarios using the chips below.'
                   : 'Note: DeclaredAgeRange requires iOS 26.0 or later. On older iOS versions, you will receive an UnsupportedPlatformException.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,
