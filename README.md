@@ -266,9 +266,52 @@ Main class for interacting with the plugin.
 
 #### Methods
 
-- `Future<void> initialize({List<int>? ageGates})` - Initializes the plugin. On iOS, `ageGates` specifies age thresholds (e.g., `[13, 16, 18]`). Required for iOS, optional for Android.
+- `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
+  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android.
+  - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
+  - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user.
+
+### AgeSignalsMockData
+
+**Android only** - Configuration for custom mock/test data using Google's `FakeAgeSignalsManager`. Ignored on iOS.
+
+#### Constructor
+
+```dart
+AgeSignalsMockData({
+  required AgeSignalsStatus status,
+  int? ageLower,
+  int? ageUpper,
+  AgeDeclarationSource? source,
+  String? installId,
+})
+```
+
+#### Properties
+
+- `AgeSignalsStatus status` - The mock verification status to return
+- `int? ageLower` - Mock lower bound of age range (for supervised statuses)
+- `int? ageUpper` - Mock upper bound of age range (for supervised statuses)
+- `AgeDeclarationSource? source` - Reserved for future use (currently unused)
+- `String? installId` - Mock installation ID (Android only)
+
+#### Example (Android only)
+
+```dart
+const mockData = AgeSignalsMockData(
+  status: AgeSignalsStatus.supervised,
+  ageLower: 16,
+  ageUpper: 17,
+  installId: 'test_id',
+);
+
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,  // Ignored on iOS
+  mockData: mockData,  // Ignored on iOS
+);
+```
 
 ### AgeSignalsResult
 
@@ -384,10 +427,10 @@ Follow Apple's guidelines for handling age-related data and ensure compliance wi
 
 ### Android Testing
 
-You have full control over when to use mock data via the `useMockData` parameter (Android only; ignored on iOS):
+You have full control over when to use mock data via the `useMockData` parameter:
 
 ```dart
-// For testing with mock data (recommended until APIs go live in your target state)
+// For testing with default mock data (supervised 13-15)
 await AgeRangeSignals.instance.initialize(
   ageGates: [13, 16, 18],
   useMockData: true,  // Uses FakeAgeSignalsManager
@@ -408,32 +451,86 @@ print(result.installId); // "test_install_id_12345"
 ```
 
 **How it works:**
-- `useMockData: true` - Always uses `FakeAgeSignalsManager` for testing
-- `useMockData: false` (default) - Always uses real Play Age Signals API
+- `useMockData: true` - Uses `FakeAgeSignalsManager` for testing
+- `useMockData: false` (default) - Uses real Play Age Signals API
 - You control this behavior explicitly in your code
 
-**To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
+#### Testing Different Scenarios
 
-```kotlin
-// Default: supervised user aged 13-15 (demonstrates age range feature)
-val fakeResult = AgeSignalsResult.builder()
-    .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
-    .setAgeLower(13)
-    .setAgeUpper(15)
-    .setInstallId("test_install_id_12345")
-    .build()
+You can now test different scenarios without modifying the plugin source code by using the `mockData` parameter:
 
-// For testing verified users (18+)
-val fakeResult = AgeSignalsResult.builder()
-    .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
-    // Don't call setAgeLower(), setAgeUpper(), or setInstallId()
-    // to leave them as null
-    .build()
+```dart
+// Test supervised user aged 16-17
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervised,
+    ageLower: 16,
+    ageUpper: 17,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test verified user (18+) - age values should be null
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: const AgeSignalsMockData(
+    status: AgeSignalsStatus.verified,
+    // Don't provide ageLower, ageUpper, or installId
+    // They will be null as expected for verified users
+  ),
+);
+
+// Test supervisedApprovalPending status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervisedApprovalPending,
+    ageLower: 13,
+    ageUpper: 15,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test supervisedApprovalDenied status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervisedApprovalDenied,
+    ageLower: 13,
+    ageUpper: 15,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test unknown status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: const AgeSignalsMockData(
+    status: AgeSignalsStatus.unknown,
+  ),
+);
 ```
+
+**Benefits:**
+- Uses Google's official `FakeAgeSignalsManager` for authentic testing
+- Test all scenarios from Dart code - no need to modify Kotlin source files
+- Easier automated testing and manual QA
+- Default behavior (supervised 13-15) maintained for backward compatibility
 
 **Note**: The Google Play Age Signals API returns `ageLower` and `ageUpper` as integer values for supervised users. These represent the bounds of predefined age bands (default bands: 0-12, 13-15, 16-17, and 18+). For example, a supervised user aged 13-15 would have `ageLower=13` and `ageUpper=15`. For verified users (18+), these values are typically `null` since they don't need supervision. Age bands can be customized in Play Console based on your app's requirements.
 
 ### iOS Testing
+
+**⚠️ No Mock Data Support on iOS**
+
+Apple does **not provide testing utilities** for the DeclaredAgeRange API. The `useMockData` and `mockData` parameters are **ignored on iOS**. Testing requires:
+
+- **Real iOS 26.2+ devices** (iPhone or iPad)
+- **Actual Apple IDs** with configured ages
+- **Physical device testing** (no simulator support)
+
+This is a limitation of Apple's DeclaredAgeRange API, not this plugin. For app-level UI/flow testing during development, you may want to implement conditional logic in your app to bypass age verification in debug builds.
 
 **Regional Eligibility (iOS 26.2+)**
 

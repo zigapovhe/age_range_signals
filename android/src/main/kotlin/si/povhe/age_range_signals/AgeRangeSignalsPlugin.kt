@@ -18,6 +18,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
     private var ageSignalsManager: AgeSignalsManager? = null
     private var useFakeManager = false
+    private var mockData: Map<String, Any?>? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "age_range_signals")
@@ -37,23 +38,44 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
 
-        // Set up a default test result for supervised user
-        // This demonstrates age range functionality in the example app
+        // Use custom mock data if provided, otherwise use defaults for backwards compatibility
+        // Default test result is for supervised user (13-15) to demonstrate age range functionality
         //
-        // IMPORTANT: Age ranges (13-15 here) are determined by Google Play's
-        // parental control settings, NOT by your app's configured age gates.
-        // Android ignores the ageGates parameter - it's iOS-only.
+        // IMPORTANT: Age ranges are determined by Google Play's parental control settings,
+        // NOT by your app's configured age gates. Android ignores the ageGates parameter - it's iOS-only.
         // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
-        //
-        // To test verified users (18+), change to VERIFIED status and omit
-        // setAgeLower(), setAgeUpper(), setInstallId() to leave them as null
-        val fakeResult = AgeSignalsResult.builder()
-            .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
-            .setInstallId("test_install_id_12345")
-            .setAgeLower(13)
-            .setAgeUpper(15)
-            .build()
+        val mockDataMap = mockData
 
+        // Extract mock data values or use defaults
+        val statusString = mockDataMap?.get("status") as? String ?: "supervised"
+        val ageLower = mockDataMap?.get("ageLower") as? Int ?: 13
+        val ageUpper = mockDataMap?.get("ageUpper") as? Int ?: 15
+        val installId = mockDataMap?.get("installId") as? String ?: "test_install_id_12345"
+
+        // Parse status string to enum
+        val userStatus = when (statusString) {
+            "verified" -> AgeSignalsVerificationStatus.VERIFIED
+            "supervised" -> AgeSignalsVerificationStatus.SUPERVISED
+            "supervisedApprovalPending" -> AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING
+            "supervisedApprovalDenied" -> AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED
+            "unknown" -> AgeSignalsVerificationStatus.UNKNOWN
+            else -> AgeSignalsVerificationStatus.SUPERVISED
+        }
+
+        // Build result with custom or default values
+        val resultBuilder = AgeSignalsResult.builder().setUserStatus(userStatus)
+
+        // Only set age range and installId if status is supervised (or similar states)
+        // For verified status, these are typically null
+        if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
+            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
+            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED) {
+            resultBuilder.setAgeLower(ageLower)
+            resultBuilder.setAgeUpper(ageUpper)
+            resultBuilder.setInstallId(installId)
+        }
+
+        val fakeResult = resultBuilder.build()
         fakeManager.setNextAgeSignalsResult(fakeResult)
         return fakeManager
     }
@@ -63,6 +85,8 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             "initialize" -> {
                 val useMockData = call.argument<Boolean>("useMockData") ?: false
                 useFakeManager = useMockData
+                // Store mock data for use when creating fake manager
+                mockData = call.argument<Map<String, Any?>>("mockData")
                 result.success(null)
             }
             "checkAgeSignals" -> {

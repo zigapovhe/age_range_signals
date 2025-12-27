@@ -1,7 +1,9 @@
 import 'age_range_signals_platform_interface.dart';
 import 'src/models/age_signals_result.dart';
+import 'src/models/age_signals_mock_data.dart';
 
 export 'src/models/age_signals_result.dart';
+export 'src/models/age_signals_mock_data.dart';
 export 'src/exceptions/age_signals_exception.dart';
 
 /// Flutter plugin for age verification.
@@ -49,30 +51,46 @@ class AgeRangeSignals {
   /// For example, `[13, 16, 18]` will allow the app to determine if the user is
   /// under 13, between 13-15, between 16-17, or 18+.
   ///
+  /// **Testing with Mock Data (Android only)**
+  ///
   /// Set [useMockData] to true to use fake/test data instead of real APIs.
-  /// This is useful for testing before APIs are available or in development.
-  /// On Android, this enables FakeAgeSignalsManager. Defaults to false.
+  /// When [useMockData] is true, you can optionally provide [mockData] to
+  /// customize the mock response using Google's official [FakeAgeSignalsManager].
+  ///
+  /// **IMPORTANT:** Mock data is only supported on Android. Apple does not provide
+  /// official testing utilities for the DeclaredAgeRange API. On iOS, the
+  /// [useMockData] and [mockData] parameters are ignored, and the real API is
+  /// always used. iOS testing requires real iOS 26.2+ devices.
   ///
   /// Should be called before [checkAgeSignals].
   ///
   /// Example:
   /// ```dart
-  /// // For testing with mock data
+  /// // For testing with custom mock data (Android only)
   /// await AgeRangeSignals.instance.initialize(
-  ///   ageGates: [13, 16, 18],
-  ///   useMockData: true,
+  ///   useMockData: true,  // Ignored on iOS
+  ///   mockData: AgeSignalsMockData(
+  ///     status: AgeSignalsStatus.supervised,
+  ///     ageLower: 16,
+  ///     ageUpper: 17,
+  ///   ),
   /// );
   ///
   /// // For production with real APIs
   /// await AgeRangeSignals.instance.initialize(
-  ///   ageGates: [13, 16, 18],
+  ///   ageGates: [13, 16, 18],  // Required for iOS
   ///   useMockData: false,
   /// );
   /// ```
-  Future<void> initialize({List<int>? ageGates, bool useMockData = false}) {
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) {
     return AgeRangeSignalsPlatform.instance.initialize(
       ageGates: ageGates,
       useMockData: useMockData,
+      mockData: mockData,
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'age_range_signals_method_channel.dart';
 import 'src/models/age_signals_result.dart';
+import 'src/models/age_signals_mock_data.dart';
 
 abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// Constructs a AgeRangeSignalsPlatform.
@@ -31,10 +32,15 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   ///
   /// Set [useMockData] to true to use fake/test data instead of real APIs.
   /// This is useful for testing before APIs are available or in development.
-  /// Defaults to false (use real APIs).
+  /// When [useMockData] is true, you can optionally provide [mockData] to
+  /// customize the mock response. If not provided, default mock data will be used.
   ///
   /// Should be called before [checkAgeSignals].
-  Future<void> initialize({List<int>? ageGates, bool useMockData = false}) {
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) {
     throw UnimplementedError('initialize() has not been implemented.');
   }
 
