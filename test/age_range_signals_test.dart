@@ -11,8 +11,11 @@ class MockAgeRangeSignalsPlatform
   List<int>? _ageGates;
 
   @override
-  Future<void> initialize(
-      {List<int>? ageGates, bool useMockData = false}) async {
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) async {
     _initialized = true;
     _ageGates = ageGates;
   }
@@ -38,8 +41,11 @@ class MockAgeRangeSignalsPlatformSupervised
   bool _initialized = false;
 
   @override
-  Future<void> initialize(
-      {List<int>? ageGates, bool useMockData = false}) async {
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) async {
     _initialized = true;
   }
 
@@ -54,6 +60,49 @@ class MockAgeRangeSignalsPlatformSupervised
       ageLower: 13,
       ageUpper: 15,
       installId: 'test-install-id',
+    );
+  }
+}
+
+class MockAgeRangeSignalsPlatformWithMockData
+    with MockPlatformInterfaceMixin
+    implements AgeRangeSignalsPlatform {
+  bool _initialized = false;
+  AgeSignalsMockData? _mockData;
+
+  @override
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) async {
+    _initialized = true;
+    _mockData = mockData;
+  }
+
+  @override
+  Future<AgeSignalsResult> checkAgeSignals() async {
+    if (!_initialized) {
+      throw const NotInitializedException('Not initialized');
+    }
+
+    // Return custom mock data if provided, otherwise defaults
+    if (_mockData != null) {
+      return AgeSignalsResult(
+        status: _mockData!.status,
+        ageLower: _mockData!.ageLower,
+        ageUpper: _mockData!.ageUpper,
+        source: _mockData!.source,
+        installId: _mockData!.installId,
+      );
+    }
+
+    // Default: supervised 13-15
+    return const AgeSignalsResult(
+      status: AgeSignalsStatus.supervised,
+      ageLower: 13,
+      ageUpper: 15,
+      installId: 'test_install_id_12345',
     );
   }
 }
@@ -276,6 +325,189 @@ void main() {
     test('NotInitializedException is AgeSignalsException', () {
       const exception = NotInitializedException('Not initialized');
       expect(exception, isA<AgeSignalsException>());
+    });
+  });
+
+  group('AgeRangeSignals - mockData parameter', () {
+    late MockAgeRangeSignalsPlatformWithMockData mockPlatform;
+
+    setUp(() {
+      mockPlatform = MockAgeRangeSignalsPlatformWithMockData();
+      AgeRangeSignalsPlatform.instance = mockPlatform;
+    });
+
+    test('initialize with custom mockData returns custom supervised result',
+        () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: AgeSignalsMockData(
+          status: AgeSignalsStatus.supervised,
+          ageLower: 16,
+          ageUpper: 17,
+          installId: 'custom_id',
+        ),
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.supervised);
+      expect(result.ageLower, 16);
+      expect(result.ageUpper, 17);
+      expect(result.installId, 'custom_id');
+    });
+
+    test('initialize with verified mockData returns null ages', () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: const AgeSignalsMockData(
+          status: AgeSignalsStatus.verified,
+        ),
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.verified);
+      expect(result.ageLower, null);
+      expect(result.ageUpper, null);
+      expect(result.installId, null);
+    });
+
+    test('initialize with supervisedApprovalPending mockData works', () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: AgeSignalsMockData(
+          status: AgeSignalsStatus.supervisedApprovalPending,
+          ageLower: 13,
+          ageUpper: 15,
+          installId: 'pending_id',
+        ),
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.supervisedApprovalPending);
+      expect(result.ageLower, 13);
+      expect(result.ageUpper, 15);
+      expect(result.installId, 'pending_id');
+    });
+
+    test('initialize with unknown mockData returns null ages', () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: const AgeSignalsMockData(
+          status: AgeSignalsStatus.unknown,
+        ),
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.unknown);
+      expect(result.ageLower, null);
+      expect(result.ageUpper, null);
+    });
+
+    test('initialize without mockData uses defaults (supervised 13-15)',
+        () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        // No mockData parameter
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.supervised);
+      expect(result.ageLower, 13);
+      expect(result.ageUpper, 15);
+      expect(result.installId, 'test_install_id_12345');
+    });
+
+    test('initialize with mockData including source field', () async {
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: const AgeSignalsMockData(
+          status: AgeSignalsStatus.supervised,
+          ageLower: 13,
+          ageUpper: 15,
+          source: AgeDeclarationSource.guardianDeclared,
+        ),
+      );
+
+      final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+      expect(result.status, AgeSignalsStatus.supervised);
+      expect(result.ageLower, 13);
+      expect(result.ageUpper, 15);
+      expect(result.source, AgeDeclarationSource.guardianDeclared);
+    });
+  });
+
+  group('AgeSignalsMockData', () {
+    test('toMap converts correctly', () {
+      const mockData = AgeSignalsMockData(
+        status: AgeSignalsStatus.supervised,
+        ageLower: 16,
+        ageUpper: 17,
+        source: AgeDeclarationSource.selfDeclared,
+        installId: 'custom_id',
+      );
+
+      final map = mockData.toMap();
+
+      expect(map['status'], 'supervised');
+      expect(map['ageLower'], 16);
+      expect(map['ageUpper'], 17);
+      expect(map['source'], 'selfDeclared');
+      expect(map['installId'], 'custom_id');
+    });
+
+    test('toMap converts verified status correctly', () {
+      const mockData = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+      );
+
+      final map = mockData.toMap();
+
+      expect(map['status'], 'verified');
+      expect(map['ageLower'], null);
+      expect(map['ageUpper'], null);
+      expect(map['source'], null);
+      expect(map['installId'], null);
+    });
+
+    test('copyWith creates correct copy', () {
+      const original = AgeSignalsMockData(
+        status: AgeSignalsStatus.supervised,
+        ageLower: 13,
+        ageUpper: 15,
+      );
+
+      final copy = original.copyWith(
+        ageLower: 16,
+        ageUpper: 17,
+      );
+
+      expect(copy.status, AgeSignalsStatus.supervised);
+      expect(copy.ageLower, 16);
+      expect(copy.ageUpper, 17);
+    });
+
+    test('equality works correctly', () {
+      const mockData1 = AgeSignalsMockData(
+        status: AgeSignalsStatus.supervised,
+        ageLower: 13,
+        ageUpper: 15,
+      );
+      const mockData2 = AgeSignalsMockData(
+        status: AgeSignalsStatus.supervised,
+        ageLower: 13,
+        ageUpper: 15,
+      );
+      const mockData3 = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+      );
+
+      expect(mockData1, equals(mockData2));
+      expect(mockData1, isNot(equals(mockData3)));
     });
   });
 }

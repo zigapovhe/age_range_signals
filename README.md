@@ -6,32 +6,33 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 - [Features](#features)
 - [Platform Support](#platform-support)
+- [Important: Texas SB 2420 Enforcement Paused](#important-texas-sb-2420-enforcement-paused)
 - [Platform Setup](#platform-setup)
-  - [Android](#android)
-  - [iOS](#ios)
+    - [Android](#android)
+    - [iOS](#ios)
 - [Usage](#usage)
-  - [Basic Example](#basic-example)
-  - [Complete Example](#complete-example)
-  - [18+ Only App](#18-only-app)
-  - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
+    - [Basic Example](#basic-example)
+    - [Complete Example](#complete-example)
+    - [18+ Only App](#18-only-app)
+    - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
 - [API Reference](#api-reference)
-  - [AgeRangeSignals](#agerangesignals)
-  - [AgeSignalsResult](#agesignalsresult)
-  - [AgeSignalsStatus](#agesignalsstatus)
-  - [AgeDeclarationSource](#agedeclarationsource)
-  - [Exceptions](#exceptions)
+    - [AgeRangeSignals](#agerangesignals)
+    - [AgeSignalsResult](#agesignalsresult)
+    - [AgeSignalsStatus](#agesignalsstatus)
+    - [AgeDeclarationSource](#agedeclarationsource)
+    - [Exceptions](#exceptions)
 - [Legal Compliance](#legal-compliance)
-  - [Important Usage Restrictions](#important-usage-restrictions)
-  - [Privacy Considerations](#privacy-considerations)
+    - [Important Usage Restrictions](#important-usage-restrictions)
+    - [Privacy Considerations](#privacy-considerations)
 - [Testing](#testing)
-  - [Android Testing](#android-testing)
-  - [iOS Testing](#ios-testing)
+    - [Android Testing](#android-testing)
+    - [iOS Testing](#ios-testing)
 - [Limitations](#limitations)
-  - [Android](#android-1)
-  - [iOS](#ios-1)
+    - [Android](#android-1)
+    - [iOS](#ios-1)
 - [Troubleshooting](#troubleshooting)
-  - [Android](#android-2)
-  - [iOS](#ios-2)
+    - [Android](#android-2)
+    - [iOS](#ios-2)
 - [Example App](#example-app)
 - [Contributing](#contributing)
 - [License](#license)
@@ -57,6 +58,19 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 **Note:** The iOS DeclaredAgeRange API is only available on iOS 26.0+. On older iOS versions, the plugin will return an `UnsupportedPlatformException`. Your app can support older iOS versions and handle this gracefully.
 
+## Important: Texas SB 2420 Enforcement Paused
+
+> ⚠️ On **December 23, 2025**, a federal court [issued a preliminary injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) blocking Texas SB 2420 from taking effect.
+
+**What this means:**
+- Google Play Age Signals API will **not return live responses** for Texas users
+- Apple's DeclaredAgeRange API implementation for Texas has been **paused**
+- **Utah (May 2026)** and **Louisiana (July 2026)** laws are **not affected**
+
+**Recommendation:** Keep this plugin integrated in your app. This is a temporary injunction—the law could become enforceable at any time if Texas wins on appeal or the injunction is lifted. The plugin gracefully handles cases where APIs don't return data, so there's no downside to being prepared.
+
+For more details, see [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
+
 ## Platform Setup
 
 ### Android
@@ -65,7 +79,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
-**Important:** The Play Age Signals API is currently in beta. Before January 1, 2026, the real API returns a "Not yet implemented" error. Use `useMockData: true` to test with `FakeAgeSignalsManager`. After January 1, 2026, the real API will return actual age verification data in supported US states.
+**Important:** The Play Age Signals API is currently in beta. Due to a [federal court injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) blocking Texas SB 2420, the API will not return live data for Texas users as originally planned. Utah (May 2026) and Louisiana (July 2026) timelines remain unaffected. Use `useMockData: true` for testing until APIs go live in applicable states.
 
 ### iOS
 
@@ -252,9 +266,52 @@ Main class for interacting with the plugin.
 
 #### Methods
 
-- `Future<void> initialize({List<int>? ageGates})` - Initializes the plugin. On iOS, `ageGates` specifies age thresholds (e.g., `[13, 16, 18]`). Required for iOS, optional for Android.
+- `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
+  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android.
+  - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
+  - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user.
+
+### AgeSignalsMockData
+
+**Android only** - Configuration for custom mock/test data using Google's `FakeAgeSignalsManager`. Ignored on iOS.
+
+#### Constructor
+
+```dart
+AgeSignalsMockData({
+  required AgeSignalsStatus status,
+  int? ageLower,
+  int? ageUpper,
+  AgeDeclarationSource? source,
+  String? installId,
+})
+```
+
+#### Properties
+
+- `AgeSignalsStatus status` - The mock verification status to return
+- `int? ageLower` - Mock lower bound of age range (for supervised statuses)
+- `int? ageUpper` - Mock upper bound of age range (for supervised statuses)
+- `AgeDeclarationSource? source` - Reserved for future use (currently unused)
+- `String? installId` - Mock installation ID (Android only)
+
+#### Example (Android only)
+
+```dart
+const mockData = AgeSignalsMockData(
+  status: AgeSignalsStatus.supervised,
+  ageLower: 16,
+  ageUpper: 17,
+  installId: 'test_id',
+);
+
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,  // Ignored on iOS
+  mockData: mockData,  // Ignored on iOS
+);
+```
 
 ### AgeSignalsResult
 
@@ -370,10 +427,10 @@ Follow Apple's guidelines for handling age-related data and ensure compliance wi
 
 ### Android Testing
 
-You have full control over when to use mock data via the `useMockData` parameter (Android only; ignored on iOS):
+You have full control over when to use mock data via the `useMockData` parameter:
 
 ```dart
-// For testing with mock data (recommended before January 1, 2026)
+// For testing with default mock data (supervised 13-15)
 await AgeRangeSignals.instance.initialize(
   ageGates: [13, 16, 18],
   useMockData: true,  // Uses FakeAgeSignalsManager
@@ -394,32 +451,86 @@ print(result.installId); // "test_install_id_12345"
 ```
 
 **How it works:**
-- `useMockData: true` - Always uses `FakeAgeSignalsManager` for testing
-- `useMockData: false` (default) - Always uses real Play Age Signals API
+- `useMockData: true` - Uses `FakeAgeSignalsManager` for testing
+- `useMockData: false` (default) - Uses real Play Age Signals API
 - You control this behavior explicitly in your code
 
-**To test different scenarios**, modify the fake result in `AgeRangeSignalsPlugin.kt`:
+#### Testing Different Scenarios
 
-```kotlin
-// Default: supervised user aged 13-15 (demonstrates age range feature)
-val fakeResult = AgeSignalsResult.builder()
-    .setUserStatus(AgeSignalsVerificationStatus.SUPERVISED)
-    .setAgeLower(13)
-    .setAgeUpper(15)
-    .setInstallId("test_install_id_12345")
-    .build()
+You can now test different scenarios without modifying the plugin source code by using the `mockData` parameter:
 
-// For testing verified users (18+)
-val fakeResult = AgeSignalsResult.builder()
-    .setUserStatus(AgeSignalsVerificationStatus.VERIFIED)
-    // Don't call setAgeLower(), setAgeUpper(), or setInstallId()
-    // to leave them as null
-    .build()
+```dart
+// Test supervised user aged 16-17
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervised,
+    ageLower: 16,
+    ageUpper: 17,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test verified user (18+) - age values should be null
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: const AgeSignalsMockData(
+    status: AgeSignalsStatus.verified,
+    // Don't provide ageLower, ageUpper, or installId
+    // They will be null as expected for verified users
+  ),
+);
+
+// Test supervisedApprovalPending status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervisedApprovalPending,
+    ageLower: 13,
+    ageUpper: 15,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test supervisedApprovalDenied status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: AgeSignalsMockData(
+    status: AgeSignalsStatus.supervisedApprovalDenied,
+    ageLower: 13,
+    ageUpper: 15,
+    installId: 'test_install_id',
+  ),
+);
+
+// Test unknown status
+await AgeRangeSignals.instance.initialize(
+  useMockData: true,
+  mockData: const AgeSignalsMockData(
+    status: AgeSignalsStatus.unknown,
+  ),
+);
 ```
+
+**Benefits:**
+- Uses Google's official `FakeAgeSignalsManager` for authentic testing
+- Test all scenarios from Dart code - no need to modify Kotlin source files
+- Easier automated testing and manual QA
+- Default behavior (supervised 13-15) maintained for backward compatibility
 
 **Note**: The Google Play Age Signals API returns `ageLower` and `ageUpper` as integer values for supervised users. These represent the bounds of predefined age bands (default bands: 0-12, 13-15, 16-17, and 18+). For example, a supervised user aged 13-15 would have `ageLower=13` and `ageUpper=15`. For verified users (18+), these values are typically `null` since they don't need supervision. Age bands can be customized in Play Console based on your app's requirements.
 
 ### iOS Testing
+
+**⚠️ No Mock Data Support on iOS**
+
+Apple does **not provide testing utilities** for the DeclaredAgeRange API. The `useMockData` and `mockData` parameters are **ignored on iOS**. Testing requires:
+
+- **Real iOS 26.2+ devices** (iPhone or iPad)
+- **Actual Apple IDs** with configured ages
+- **Physical device testing** (no simulator support)
+
+This is a limitation of Apple's DeclaredAgeRange API, not this plugin. For app-level UI/flow testing during development, you may want to implement conditional logic in your app to bypass age verification in debug builds.
 
 **Regional Eligibility (iOS 26.2+)**
 
@@ -459,10 +570,10 @@ try {
 
 ### Android
 - The Play Age Signals API is currently in beta
-- Real API returns "Not yet implemented" until January 1, 2026
-- **Before Jan 1, 2026**: Use `useMockData: true` to test with `FakeAgeSignalsManager`
-- **After Jan 1, 2026**: Use `useMockData: false` (default) to get real user data
-- After launch, only returns real data for users in applicable US states
+- **Texas**: Enforcement paused due to [federal court injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) — API will not return live data for Texas users until litigation concludes
+- **Utah (May 2026)** and **Louisiana (July 2026)**: Still on track — APIs expected to return live data for users in these states
+- Use `useMockData: true` for testing until APIs go live in your target states
+- Only returns real data for users in applicable US states where laws are in effect
 - Requires Google Play Services to be installed and up to date
 
 ### iOS
@@ -480,10 +591,10 @@ try {
 **MissingEntitlementException (iOS)**
 - The `com.apple.developer.declared-age-range` entitlement is not configured or not approved by Apple
 - **Solution**:
-  1. Add `Runner.entitlements` file with the required entitlement (see iOS Setup)
-  2. Request the entitlement from Apple Developer Portal for your App ID
-  3. Wait for Apple's approval
-  4. Regenerate provisioning profiles
+    1. Add `Runner.entitlements` file with the required entitlement (see iOS Setup)
+    2. Request the entitlement from Apple Developer Portal for your App ID
+    3. Wait for Apple's approval
+    4. Regenerate provisioning profiles
 
 **UserCancelledException**
 - User cancelled the age verification prompt
@@ -509,7 +620,7 @@ try {
 - API is not available on the device or in this region
 - Ensure Google Play Services is installed and up to date
 - Verify the device has an active internet connection
-- After January 1, 2026, check if device is in a supported US state
+- Check if the user is in a US state where the law is currently in effect (Texas enforcement is paused; Utah and Louisiana expected May/July 2026)
 
 **iOS**
 

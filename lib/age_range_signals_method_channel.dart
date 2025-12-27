@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'age_range_signals_platform_interface.dart';
 import 'src/models/age_signals_result.dart';
+import 'src/models/age_signals_mock_data.dart';
 import 'src/exceptions/age_signals_exception.dart';
 
 /// An implementation of [AgeRangeSignalsPlatform] that uses method channels.
@@ -12,12 +13,16 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
   final methodChannel = const MethodChannel('age_range_signals');
 
   @override
-  Future<void> initialize(
-      {List<int>? ageGates, bool useMockData = false}) async {
+  Future<void> initialize({
+    List<int>? ageGates,
+    bool useMockData = false,
+    AgeSignalsMockData? mockData,
+  }) async {
     try {
       await methodChannel.invokeMethod<void>('initialize', {
         'ageGates': ageGates,
         'useMockData': useMockData,
+        'mockData': mockData?.toMap(),
       });
     } on PlatformException catch (e) {
       throw _handlePlatformException(e);

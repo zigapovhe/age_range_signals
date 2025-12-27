@@ -34,6 +34,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   bool _isLoading = false;
   bool _isInitialized = false;
   final bool _isIos = Platform.isIOS;
+  String _currentScenario = 'Default (Supervised 13-15)';
 
   final List<int> _ageGates = [13, 16, 18];
 
@@ -43,11 +44,14 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
     _initializePlugin();
   }
 
-  Future<void> _initializePlugin() async {
+  Future<void> _initializePlugin({AgeSignalsMockData? mockData}) async {
     try {
       await AgeRangeSignals.instance.initialize(
         ageGates: _ageGates,
+        // useMockData: Android only - uses Google's FakeAgeSignalsManager
+        // On iOS, this is ignored and the real DeclaredAgeRange API is always used
         useMockData: true, // Set to true for testing, false for production
+        mockData: mockData, // Android only - custom mock data for testing
       );
       setState(() {
         _isInitialized = true;
@@ -57,6 +61,18 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         _error = 'Initialization failed: $e';
       });
     }
+  }
+
+  Future<void> _reinitializeWithScenario(
+    String scenarioName,
+    AgeSignalsMockData mockData,
+  ) async {
+    setState(() {
+      _currentScenario = scenarioName;
+      _result = null;
+      _error = null;
+    });
+    await _initializePlugin(mockData: mockData);
   }
 
   Future<void> _checkAgeSignals() async {
@@ -116,6 +132,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           children: [
             _buildInfoCard(),
             if (_isIos) ...[const SizedBox(height: 12), _buildIosWarningCard()],
+            if (!_isIos) ...[const SizedBox(height: 12), _buildScenarioCard()],
             const SizedBox(height: 16),
             _buildCheckButton(),
             const SizedBox(height: 24),
@@ -158,7 +175,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             const SizedBox(height: 8),
             Text(
               Platform.isAndroid
-                  ? 'Note: This example uses FakeAgeSignalsManager (useMockData: true) for testing. Before January 1, 2026, the real Play Age Signals API returns a "Not yet implemented" error.'
+                  ? 'Note: This example uses mock data (useMockData: true) for testing. You can test different scenarios using the chips below.'
                   : 'Note: DeclaredAgeRange requires iOS 26.0 or later. On older iOS versions, you will receive an UnsupportedPlatformException.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,
@@ -168,6 +185,91 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildScenarioCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Test Scenarios',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Current: $_currentScenario',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.blue[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildScenarioChip(
+                  'Default (Supervised 13-15)',
+                  AgeSignalsMockData(
+                    status: AgeSignalsStatus.supervised,
+                    ageLower: 13,
+                    ageUpper: 15,
+                    installId: 'test_install_id_12345',
+                  ),
+                ),
+                _buildScenarioChip(
+                  'Supervised 16-17',
+                  AgeSignalsMockData(
+                    status: AgeSignalsStatus.supervised,
+                    ageLower: 16,
+                    ageUpper: 17,
+                    installId: 'test_install_id_12345',
+                  ),
+                ),
+                _buildScenarioChip(
+                  'Verified (18+)',
+                  const AgeSignalsMockData(status: AgeSignalsStatus.verified),
+                ),
+                _buildScenarioChip(
+                  'Approval Pending',
+                  AgeSignalsMockData(
+                    status: AgeSignalsStatus.supervisedApprovalPending,
+                    ageLower: 13,
+                    ageUpper: 15,
+                    installId: 'test_install_id_12345',
+                  ),
+                ),
+                _buildScenarioChip(
+                  'Approval Denied',
+                  AgeSignalsMockData(
+                    status: AgeSignalsStatus.supervisedApprovalDenied,
+                    ageLower: 13,
+                    ageUpper: 15,
+                    installId: 'test_install_id_12345',
+                  ),
+                ),
+                _buildScenarioChip(
+                  'Unknown',
+                  const AgeSignalsMockData(status: AgeSignalsStatus.unknown),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScenarioChip(String label, AgeSignalsMockData mockData) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: () => _reinitializeWithScenario(label, mockData),
     );
   }
 

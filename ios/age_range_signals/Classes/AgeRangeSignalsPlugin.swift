@@ -30,7 +30,9 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             if let gates = args["ageGates"] as? [Int] {
                 ageGates = gates.sorted()
             }
-            // useMockData parameter is ignored on iOS (no mock implementation yet)
+            // Note: useMockData and mockData are ignored on iOS
+            // Apple provides no official testing utilities for DeclaredAgeRange API
+            // mockData is only supported on Android via Google's FakeAgeSignalsManager
         }
         result(nil)
     }
