@@ -132,10 +132,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           children: [
             _buildInfoCard(),
             if (_isIos) ...[const SizedBox(height: 12), _buildIosWarningCard()],
-            if (!_isIos) ...[
-              const SizedBox(height: 12),
-              _buildScenarioCard(),
-            ],
+            if (!_isIos) ...[const SizedBox(height: 12), _buildScenarioCard()],
             const SizedBox(height: 16),
             _buildCheckButton(),
             const SizedBox(height: 24),
@@ -200,9 +197,9 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           children: [
             Text(
               'Test Scenarios',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -237,9 +234,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                 ),
                 _buildScenarioChip(
                   'Verified (18+)',
-                  const AgeSignalsMockData(
-                    status: AgeSignalsStatus.verified,
-                  ),
+                  const AgeSignalsMockData(status: AgeSignalsStatus.verified),
                 ),
                 _buildScenarioChip(
                   'Approval Pending',
@@ -261,9 +256,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                 ),
                 _buildScenarioChip(
                   'Unknown',
-                  const AgeSignalsMockData(
-                    status: AgeSignalsStatus.unknown,
-                  ),
+                  const AgeSignalsMockData(status: AgeSignalsStatus.unknown),
                 ),
               ],
             ),
