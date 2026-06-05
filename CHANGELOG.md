@@ -1,6 +1,7 @@
 ## 0.6.1
 
 * **iOS**: Fixed SwiftPM build failure from 0.6.0 caused by a wrong argument order in `Package.swift`. CocoaPods was not affected.
+* **Example**: Migrated the iOS example to Swift Package Manager (dropped CocoaPods).
 
 ## 0.6.0
 
