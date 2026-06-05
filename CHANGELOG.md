@@ -1,3 +1,7 @@
+## 0.6.1
+
+* **iOS**: Fixed SwiftPM build failure from 0.6.0 caused by a wrong argument order in `Package.swift`. CocoaPods was not affected.
+
 ## 0.6.0
 
 * **iOS**: Fixed `checkAgeSignals()` hanging indefinitely on iOS 26.2+. The plugin no longer gates on Apple's `isEligibleForAgeFeatures` (which can hang, and returns `false` before any prompt is accepted); it calls `requestAgeRange()` directly, per Apple's guidance.

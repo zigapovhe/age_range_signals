@@ -17,10 +17,10 @@ let package = Package(
     targets: [
         .target(
             name: "age_range_signals",
-            path: ".",
             dependencies: [
                 .product(name: "FlutterFramework", package: "FlutterFramework"),
             ],
+            path: ".",
             sources: [
                 "Classes",
             ],
