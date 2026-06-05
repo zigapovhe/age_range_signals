@@ -79,27 +79,13 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         }
 
         Task { @MainActor in
-            // Check if user is eligible for age features (iOS 26.2+)
-            // Returns unknown status if user is outside applicable region
-            if #available(iOS 26.2, *) {
-                do {
-                    let isEligible = try await AgeRangeService.shared.isEligibleForAgeFeatures
-                    if !isEligible {
-                        result([
-                            "status": "unknown",
-                            "ageLower": NSNull(),
-                            "ageUpper": NSNull(),
-                            "source": NSNull(),
-                            "installId": NSNull()
-                        ])
-                        return
-                    }
-                } catch {
-                    // If eligibility check fails (missing entitlement, error, etc.),
-                    // continue to main API call which will provide appropriate error
-                }
-            }
-
+            // Note: we deliberately do NOT gate on AgeRangeService.isEligibleForAgeFeatures
+            // (iOS 26.2+). In the current OS window that property is unreliable — it can
+            // hang indefinitely (with no timeout the whole call would hang) and it returns
+            // false before the user has ever accepted a prompt, only updating on a later
+            // relaunch (reported on the Apple Developer Forums, threads 807906 & 809829).
+            // Apple's own guidance is to call requestAgeRange() directly, which is the
+            // source of truth, so that is what we do here.
             do {
                 let response: AgeRangeService.Response
                 switch self.ageGates.count {
