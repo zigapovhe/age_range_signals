@@ -72,10 +72,18 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED ||
             userStatus == AgeSignalsVerificationStatus.DECLARED) {
             val ageLower = mockDataMap?.get("ageLower") as? Int ?: 13
-            val ageUpper = mockDataMap?.get("ageUpper") as? Int ?: 15
-
             resultBuilder.setAgeLower(ageLower)
-            resultBuilder.setAgeUpper(ageUpper)
+
+            // Honor an explicitly-provided null ageUpper so the open-ended top
+            // bucket (e.g. ageLower=18, ageUpper=null) is reproducible via mock data.
+            // Only fall back to the default (15) when no custom mock data was supplied.
+            val ageUpper = mockDataMap?.get("ageUpper") as? Int
+            if (ageUpper != null) {
+                resultBuilder.setAgeUpper(ageUpper)
+            } else if (mockDataMap == null) {
+                resultBuilder.setAgeUpper(15)
+            }
+            // else: custom mock data with a null ageUpper -> leave unset (null)
         }
 
         // installId is only set for supervised statuses, not for declared
@@ -110,17 +118,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun checkAgeSignals(result: Result) {
-        var manager = ageSignalsManager
-        if (manager == null) {
-            result.error(
-                "API_NOT_AVAILABLE",
-                "Age Signals API is not available on this device",
-                null
-            )
-            return
-        }
-
-        // If user explicitly requested mock data, use fake manager
+        // If the user explicitly requested mock data, use the fake manager.
+        // This runs before the real-manager null check so mock mode works even
+        // when Play Services / the real Age Signals API is unavailable.
         if (useFakeManager) {
             val fakeManager = createFakeManager()
             val request = AgeSignalsRequest.builder().build()
@@ -158,6 +158,16 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
         }
 
         // Use real API
+        val manager = ageSignalsManager
+        if (manager == null) {
+            result.error(
+                "API_NOT_AVAILABLE",
+                "Age Signals API is not available on this device",
+                null
+            )
+            return
+        }
+
         val request = AgeSignalsRequest.builder().build()
 
         manager.checkAgeSignals(request)
