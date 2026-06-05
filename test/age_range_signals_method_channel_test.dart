@@ -12,25 +12,25 @@ void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      switch (methodCall.method) {
-        case 'initialize':
-          return null;
-        case 'checkAgeSignals':
-          // Mock VERIFIED user (18+) - age values should be null
-          return {
-            'status': 'verified',
-            'ageLower': null,
-            'ageUpper': null,
-            'source': 'selfDeclared',
-            'installId': null,
-          };
-        default:
-          throw PlatformException(
-            code: 'UNIMPLEMENTED',
-            message: 'Method not implemented',
-          );
-      }
-    });
+          switch (methodCall.method) {
+            case 'initialize':
+              return null;
+            case 'checkAgeSignals':
+              // Mock VERIFIED user (18+) - age values should be null
+              return {
+                'status': 'verified',
+                'ageLower': null,
+                'ageUpper': null,
+                'source': 'selfDeclared',
+                'installId': null,
+              };
+            default:
+              throw PlatformException(
+                code: 'UNIMPLEMENTED',
+                message: 'Method not implemented',
+              );
+          }
+        });
   });
 
   tearDown(() {
@@ -59,17 +59,17 @@ void main() {
     // Mock SUPERVISED user (Android) with age ranges
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      if (methodCall.method == 'checkAgeSignals') {
-        return {
-          'status': 'supervised',
-          'ageLower': 13,
-          'ageUpper': 15,
-          'source': null,
-          'installId': 'test-install-id',
-        };
-      }
-      return null;
-    });
+          if (methodCall.method == 'checkAgeSignals') {
+            return {
+              'status': 'supervised',
+              'ageLower': 13,
+              'ageUpper': 15,
+              'source': null,
+              'installId': 'test-install-id',
+            };
+          }
+          return null;
+        });
 
     final result = await platform.checkAgeSignals();
 
@@ -83,11 +83,11 @@ void main() {
   test('checkAgeSignals handles API_NOT_AVAILABLE error', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      throw PlatformException(
-        code: 'API_NOT_AVAILABLE',
-        message: 'API not available',
-      );
-    });
+          throw PlatformException(
+            code: 'API_NOT_AVAILABLE',
+            message: 'API not available',
+          );
+        });
 
     expect(
       () => platform.checkAgeSignals(),
@@ -98,11 +98,11 @@ void main() {
   test('checkAgeSignals handles UNSUPPORTED_PLATFORM error', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      throw PlatformException(
-        code: 'UNSUPPORTED_PLATFORM',
-        message: 'Unsupported platform',
-      );
-    });
+          throw PlatformException(
+            code: 'UNSUPPORTED_PLATFORM',
+            message: 'Unsupported platform',
+          );
+        });
 
     expect(
       () => platform.checkAgeSignals(),
@@ -113,11 +113,11 @@ void main() {
   test('checkAgeSignals handles NOT_INITIALIZED error', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      throw PlatformException(
-        code: 'NOT_INITIALIZED',
-        message: 'Not initialized',
-      );
-    });
+          throw PlatformException(
+            code: 'NOT_INITIALIZED',
+            message: 'Not initialized',
+          );
+        });
 
     expect(
       () => platform.checkAgeSignals(),
@@ -128,11 +128,11 @@ void main() {
   test('checkAgeSignals handles generic error', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      throw PlatformException(
-        code: 'UNKNOWN_ERROR',
-        message: 'Unknown error',
-      );
-    });
+          throw PlatformException(
+            code: 'UNKNOWN_ERROR',
+            message: 'Unknown error',
+          );
+        });
 
     expect(
       () => platform.checkAgeSignals(),
@@ -143,12 +143,12 @@ void main() {
   test('checkAgeSignals handles SDK_VERSION_OUTDATED error', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      throw PlatformException(
-        code: 'SDK_VERSION_OUTDATED',
-        message: 'Google Play Services version is outdated',
-        details: 'Requires version 0.0.3 or higher',
-      );
-    });
+          throw PlatformException(
+            code: 'SDK_VERSION_OUTDATED',
+            message: 'Google Play Services version is outdated',
+            details: 'Requires version 0.0.3 or higher',
+          );
+        });
 
     expect(
       () => platform.checkAgeSignals(),
