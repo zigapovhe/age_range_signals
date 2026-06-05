@@ -6,7 +6,9 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 - [Features](#features)
 - [Platform Support](#platform-support)
-- [Important: Texas SB 2420 Enforcement Paused](#important-texas-sb-2420-enforcement-paused)
+- [Important: Brazilian Digital ECA Law (Lei 15.211)](#important-brazilian-digital-eca-law-lei-15211)
+- [Important: Australia Age Assurance](#important-australia-age-assurance)
+- [Important: Texas SB 2420 In Effect (Temporary Stay)](#important-texas-sb-2420-in-effect-temporary-stay)
 - [Platform Setup](#platform-setup)
     - [Android](#android)
     - [iOS](#ios)
@@ -42,36 +44,49 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 ## Features
 
 - ✅ Cross-platform support for Android and iOS
-- ✅ Google Play Age Signals API integration for Android (API 21+)
+- ✅ Google Play Age Signals API integration for Android (API 23+)
 - ✅ Apple DeclaredAgeRange API integration for iOS (26.0+)
 - ✅ Swift Package Manager (SPM) support for iOS
 - ✅ Configurable age gates for iOS
-- ✅ Type-safe Dart API with comprehensive error handling
+- ✅ Type-safe Dart API with structured error handling
 - ✅ Full null safety support
 
 ## Platform Support
 
 | Platform | Minimum App Version | API Available From | API |
 |----------|----------------|-----|-----|
-| Android  | API 21 (Android 5.0) | API 21+ | Google Play Age Signals API |
+| Android  | API 23 (Android 6.0) | API 23+ | Google Play Age Signals API |
 | iOS      | iOS 13.0+ (flexible) | iOS 26.0+ | DeclaredAgeRange API |
 
 **Note:** The iOS DeclaredAgeRange API is only available on iOS 26.0+. On older iOS versions, the plugin will return an `UnsupportedPlatformException`. Your app can support older iOS versions and handle this gracefully.
 
+**Note:** The Google Play Age Signals dependency (`com.google.android.play:age-signals`) declares `minSdkVersion 23`, so your app's `minSdkCompile`/`minSdk` must be **23 or higher**. Building at a lower `minSdk` will fail Gradle's manifest merge.
+
 ## Important: Brazilian Digital ECA Law (Lei 15.211)
 
-> ℹ️ **Brazil's Digital ECA law enforcement begins March 17, 2026.** Apps targeting Brazil must use `com.google.android.play:age-signals` version 0.0.3 or higher for full compliance. This plugin now includes the required version. See [Google Play Age Signals documentation](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) and [Law details](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm).
+> ℹ️ **Brazil's Digital ECA law has been enforceable since March 17, 2026.** Apps targeting Brazil must use `com.google.android.play:age-signals` version 0.0.3 or higher for full compliance. This plugin now includes the required version. See [Google Play Age Signals documentation](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) and [Law details](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm).
 
-## Important: Texas SB 2420 Enforcement Paused
+## Important: Australia Age Assurance
 
-> ⚠️ On **December 23, 2025**, a federal court [issued a preliminary injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) blocking Texas SB 2420 from taking effect.
+> ℹ️ **Australia is an applicable region for the DeclaredAgeRange API.** Apple lists Australia (alongside Brazil and Singapore) among the regions where age requirements apply. From **February 24, 2026**, Apple blocks users in Australia from downloading apps rated 18+ unless they have been confirmed to be adults. See [Apple Developer News](https://developer.apple.com/news/?id=f5zj08ey).
 
 **What this means:**
-- Google Play Age Signals API will **not return live responses** for Texas users
-- Apple's DeclaredAgeRange API implementation for Texas has been **paused**
-- **Utah (May 2026)** and **Louisiana (July 2026)** laws are **not affected**
+- Apple's DeclaredAgeRange API may **return live responses** for users in Australia (not just regulated US states)
+- This is separate from Australia's **Online Safety Amendment (Social Media Minimum Age) Act 2024**, in effect since **December 10, 2025**, which requires age-restricted social media platforms to take reasonable steps to keep under-16 users off their platforms ([eSafety Commissioner](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions))
 
-**Recommendation:** Keep this plugin integrated in your app. This is a temporary injunction—the law could become enforceable at any time if Texas wins on appeal or the injunction is lifted. The plugin gracefully handles cases where APIs don't return data, so there's no downside to being prepared.
+> **Note:** This callout concerns age *verification / range signals*. It is unrelated to Australia's App Store content *rating* values (15+, R 18+), which are a separate classification system this plugin does not deal with.
+
+## Important: Texas SB 2420 In Effect (Temporary Stay)
+
+> **As of June 4, 2026, Texas SB 2420 (the App Store Accountability Act) is in effect.** On May 28, 2026, the U.S. Court of Appeals for the Fifth Circuit [stayed the December 2025 injunction](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) that had blocked the law, allowing it to take effect while the appeal proceeds. Apple has [confirmed](https://www.macrumors.com/2026/06/03/apple-app-store-texas-sb-2420/) it is bringing App Store age verification to Texas as of June 4.
+
+**What this means:**
+- Google Play Age Signals and Apple's DeclaredAgeRange APIs may **return live responses** for Texas users again
+- **Utah** and **Louisiana** both *delayed* their app-store obligations by a year, Utah to **May 2027** ([HB 498](https://technologylaw.fkks.com/post/102mpap/utah-first-state-to-amend-its-app-store-accountability-act)) and Louisiana to **July 1, 2027** ([HB 977](https://www.alstonprivacy.com/louisiana-delays-app-store-accountability-effective-date-to-july-2027/))
+
+> **This is a temporary stay, not a final ruling.** The Fifth Circuit issued an administrative stay to preserve the status quo while it considers the appeal; the federal district court had found SB 2420 *likely* violates the First Amendment. The law could be re-blocked if the appeal is decided against Texas.
+
+**Recommendation:** Keep this plugin integrated in your app. The legal status may change again, but the plugin gracefully handles cases where APIs don't return data, so there's no downside to being prepared either way.
 
 For more details, see [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
 
@@ -83,7 +98,7 @@ For more details, see [Issue #21](https://github.com/zigapovhe/age_range_signals
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
-**Important:** The Play Age Signals API is currently in beta. Due to a [federal court injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) blocking Texas SB 2420, the API will not return live data for Texas users as originally planned. Utah (May 2026) and Louisiana (July 2026) timelines remain unaffected. Use `useMockData: true` for testing until APIs go live in applicable states.
+**Important:** The Play Age Signals API is currently in beta. As of June 4, 2026, Texas SB 2420 is in effect under a [temporary Fifth Circuit stay](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) of the December 2025 injunction, so the API may return live data for Texas users again (this status could change if the appeal is decided against Texas). Utah and Louisiana have delayed their app-store obligations to May 2027 and July 2027 respectively. The API only returns real data for users in regions where age-verification laws are in effect (e.g., applicable US states, plus Australia, Brazil, and Singapore for the iOS DeclaredAgeRange API). Use `useMockData: true` for testing otherwise.
 
 ### iOS
 
@@ -100,7 +115,15 @@ For more details, see [Issue #21](https://github.com/zigapovhe/age_range_signals
  </plist>
  ```
 
-2. Request the entitlement from Apple Developer Portal for your app identifier.
+2. Enable the **Declared Age Range** capability on your App ID. In Xcode, open your Runner target → **Signing & Capabilities** → **+ Capability** → add **Declared Age Range** (or enable it on your App ID in the [Developer portal](https://developer.apple.com/account/resources/identifiers/list)). This is **self-serve**; no request form or approval from Apple is required.
+
+> **Important:** Adding the key to `Runner.entitlements` by hand is **not** enough. The capability must be registered on your App ID, otherwise Xcode's automatic signing **silently strips** the entitlement at build time and `requestAgeRange()` fails with a missing-entitlement error at runtime. To confirm the entitlement actually made it into your signed build:
+>
+> ```bash
+> codesign -d --entitlements :- /path/to/YourApp.app | grep declared-age-range
+> ```
+>
+> If `com.apple.developer.declared-age-range` isn't listed, the capability isn't registered on your App ID.
 
 **Important:** The DeclaredAgeRange API requires iOS 26.0+, but your app does NOT need to set its minimum deployment target to iOS 26.0. The plugin handles version checking at runtime and will throw an `UnsupportedPlatformException` on older iOS versions (or on SDKs without the API), allowing you to handle this gracefully in your app.
 
@@ -275,7 +298,7 @@ Main class for interacting with the plugin.
 #### Methods
 
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
-  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android.
+  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`).
   - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
   - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
@@ -354,10 +377,15 @@ Result object containing age verification information.
 
 | userStatus | ageLower/ageUpper | source | Notes |
 |------------|-------------------|--------|-------|
-| `verified` | Populated | Populated | User consented; lower bound ≥ highest configured gate |
-| `supervised` | Populated | Populated | User consented; lower bound < highest configured gate |
+| `verified` | Populated‡ | Populated§ | User consented; lower bound ≥ highest configured gate |
+| `supervised` | Populated‡ | Populated§ | User consented; lower bound < highest configured gate |
 | `declined` | `null` | `null` | User declined to share age information |
-| `unknown` | `null` | `null` | User outside applicable region (iOS 26.2+) |
+
+**‡ `ageUpper` may be `null`** for an open-ended top bucket (e.g., an 18+ range returns `ageLower=18, ageUpper=null`), mirroring the Android edge case above.
+
+**§ `source` may be `null`** when the declaration type is neither self-declared nor guardian-declared (e.g., Apple's `paymentChecked` / `guardianPaymentChecked`, or an unrecognized/future type), even for `verified`/`supervised`.
+
+**Note:** iOS does not return `unknown` (as of 0.6.0). The previous `isEligibleForAgeFeatures` pre-check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)).
 
 ### AgeSignalsStatus
 
@@ -369,7 +397,7 @@ Enum representing the verification status:
 - `supervisedApprovalDenied` - User is supervised and guardian denied approval (Android only)
 - `declared` - User declared their age through Google Play's age declaration flow (Android only)
 - `declined` - User declined to share age (iOS only)
-- `unknown` - Age information not available or user is outside applicable region (both platforms)
+- `unknown` - Age information not available / user unverified or unsupervised (Android). As of 0.6.0, iOS no longer returns this (see [Regional Eligibility](#regional-eligibility-ios-262))
 
 ### AgeDeclarationSource
 
@@ -532,35 +560,43 @@ await AgeRangeSignals.instance.initialize(
 
 ### iOS Testing
 
-**⚠️ No Mock Data Support on iOS**
+**No `mockData` support on iOS**
 
-Apple does **not provide testing utilities** for the DeclaredAgeRange API. The `useMockData` and `mockData` parameters are **ignored on iOS**. Testing requires:
+The `useMockData` and `mockData` parameters are **ignored on iOS**: Apple provides no in-process mock for DeclaredAgeRange. Instead, it offers a **sandbox Age Assurance** mechanism (iOS 26.2+) for exercising real responses on a device.
 
-- **Real iOS 26.2+ devices** (iPhone or iPad)
-- **Actual Apple IDs** with configured ages
-- **Physical device testing** (no simulator support)
+**Requirements:**
+- A real **iOS 26.2+ device** (no simulator support)
+- The `com.apple.developer.declared-age-range` capability **registered on your App ID** (see iOS Setup; a hand-edited entitlements key alone gets stripped at signing)
+- A **Sandbox Apple Account** signed in **only** under Settings → Developer → Sandbox Apple Account (not the normal iCloud sign-in, or eligibility misbehaves), with its **App Store territory** set to an applicable region (US, Brazil, Australia, Singapore)
 
-This is a limitation of Apple's DeclaredAgeRange API, not this plugin. For app-level UI/flow testing during development, you may want to implement conditional logic in your app to bypass age verification in debug builds.
+**Testing with sandbox Age Assurance scenarios:**
+1. On the device: **Settings → Developer → Sandbox Apple Account → Manage → Age Assurance**
+2. Select a scenario, then **relaunch your app** (the value is cached) and call `checkAgeSignals()`
 
-**Regional Eligibility (iOS 26.2+)**
+With age gates `[13, 16, 18]`, Apple's scenarios map through the plugin as follows:
 
-Starting with iOS 26.2, the plugin automatically checks if the user is eligible for age features using `isEligibleForAgeFeatures`. This determines if the user is in an applicable region (e.g., regulated US states):
+| Sandbox scenario | `status` | ageLower | ageUpper | source |
+|---|---|---|---|---|
+| Under 13, approved | `supervised` | 0 | 12 | `null` |
+| Ages 13-15, approved | `supervised` | 13 | 15 | `null` |
+| Ages 16-17, declined | `supervised` | 16 | 17 | `null` |
+| 18+, account verified | `verified` | 18 | `null` | `null` |
+| 18+, self declared | `verified` | 18 | `null` | `selfDeclared` |
 
-```dart
-final result = await AgeRangeSignals.instance.checkAgeSignals();
+> **The two "declines" are different.** A `declined` *status* means the user refused to share their age (DeclaredAgeRange `.declinedSharing`). The "Ages 16-17, **declined**" sandbox scenario is not that. It still returns the 16-17 range via DeclaredAgeRange, so the plugin reports `supervised`. The "declined" there is a **PermissionKit** guardian-permission response, a separate Apple framework this plugin does not wrap. DeclaredAgeRange has no "denied" state, so a guardian decline or consent revocation surfaces as the user's real age range (`supervised`), not a distinct denied status. If you need the guardian approve/deny signal itself, use PermissionKit plus App Store Server Notifications.
 
-if (result.status == AgeSignalsStatus.unknown) {
-  // User is outside applicable region
-  // App should decide how to handle:
-  // - Allow access by default (permissive)
-  // - Use alternative verification
-  // - Deny access (restrictive)
-}
-```
+> Reference: Apple's [Testing age assurance in sandbox](https://developer.apple.com/documentation/storekit/testing-age-assurance-in-sandbox).
+
+For app-level UI/flow testing during development, you can also bypass age verification in debug builds with your own conditional logic.
+
+#### Regional Eligibility (iOS 26.2+)
+
+The plugin calls Apple's `requestAgeRange()` directly and does **not** pre-gate on `isEligibleForAgeFeatures`. Earlier versions (0.4.0-0.5.x) checked `isEligibleForAgeFeatures` first and returned `unknown` for users reported as outside an applicable region, but that property proved unreliable in the iOS 26.2.x window: it can hang indefinitely (which hung `checkAgeSignals()` entirely) and it reports `false` before the user has accepted any prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Following Apple's guidance, the plugin now treats `requestAgeRange()` as the source of truth.
+
+As a result, **iOS no longer returns `AgeSignalsStatus.unknown` from an eligibility pre-check** (as of 0.6.0). Region applicability is reflected by `requestAgeRange()` itself.
 
 **Behavior:**
-- **iOS 26.2+**: Checks `isEligibleForAgeFeatures` first, returns `unknown` if user is outside applicable region
-- **iOS 26.0-26.1**: Uses try-catch fallback (check happens in API call)
+- **iOS 26.0+**: Calls `requestAgeRange()` directly
 - **iOS < 26.0**: Throws `UnsupportedPlatformException`
 
 **Platform Version Testing**
@@ -580,18 +616,18 @@ try {
 
 ### Android
 - The Play Age Signals API is currently in beta
-- **Texas**: Enforcement paused due to [federal court injunction](https://ccianet.org/news/2025/12/judge-blocks-texass-app-store-accountability-act-as-unconstitutional-speech-restriction) — API will not return live data for Texas users until litigation concludes
-- **Utah (May 2026)** and **Louisiana (July 2026)**: Still on track — APIs expected to return live data for users in these states
+- **Texas**: SB 2420 is in effect as of June 4, 2026 under a [temporary Fifth Circuit stay](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) of the December 2025 injunction. The API may return live data for Texas users, but this could change if the appeal is decided against Texas
+- **Utah** and **Louisiana**: Both *statutory* compliance deadlines were delayed by a year, Utah to May 2027 and Louisiana to July 1, 2027. Platform (Apple/Google) rollout timing for these states may not align exactly with the statutory dates, so rely on the runtime signal rather than assuming when data becomes available
 - Use `useMockData: true` for testing until APIs go live in your target states
-- Only returns real data for users in applicable US states where laws are in effect
+- Only returns real data for users in applicable regions where laws are in effect
 - Requires Google Play Services to be installed and up to date
 
 ### iOS
 - DeclaredAgeRange API only available on iOS 26.0+
-- Requires the `com.apple.developer.declared-age-range` entitlement
+- Requires the `com.apple.developer.declared-age-range` capability registered on your App ID (not just the entitlements-file key; see iOS Setup)
 - Throws `UnsupportedPlatformException` on iOS versions below 26.0
-- Returns `AgeSignalsStatus.unknown` for users outside applicable regions (iOS 26.2+)
 - User can decline to share age information
+- No mock/testing parameter on iOS; testing is via Apple's sandbox Age Assurance scenarios (see iOS Testing)
 - Cannot detect falsified birthdates in Apple ID
 
 ## Troubleshooting
@@ -599,12 +635,13 @@ try {
 ### Common Errors
 
 **MissingEntitlementException (iOS)**
-- The `com.apple.developer.declared-age-range` entitlement is not configured or not approved by Apple
+- The `com.apple.developer.declared-age-range` entitlement isn't present in the signed app at runtime
+- Most common cause: the key is in `Runner.entitlements` but the **capability isn't registered on your App ID**, so Xcode silently strips it at signing
 - **Solution**:
-    1. Add `Runner.entitlements` file with the required entitlement (see iOS Setup)
-    2. Request the entitlement from Apple Developer Portal for your App ID
-    3. Wait for Apple's approval
-    4. Regenerate provisioning profiles
+    1. Add the key to `Runner.entitlements` (see iOS Setup)
+    2. Enable the **Declared Age Range** capability on your App ID via Xcode → Signing & Capabilities → **+ Capability** (self-serve; no Apple approval needed)
+    3. Let Xcode regenerate the provisioning profile (toggle the team or hit "Try Again" under Signing if needed)
+    4. Verify with `codesign -d --entitlements :- YourApp.app | grep declared-age-range`
 
 **UserCancelledException**
 - User cancelled the age verification prompt
@@ -630,7 +667,7 @@ try {
 - API is not available on the device or in this region
 - Ensure Google Play Services is installed and up to date
 - Verify the device has an active internet connection
-- Check if the user is in a US state where the law is currently in effect (Texas enforcement is paused; Utah and Louisiana expected May/July 2026)
+- Check if the user is in a region where the law is currently in effect (Texas is in effect as of June 4, 2026 under a temporary stay; Utah and Louisiana have been delayed to May 2027 and July 2027 respectively)
 
 **iOS**
 
@@ -642,9 +679,9 @@ try {
 **NOT_INITIALIZED**
 - Call `initialize()` with age gates before calling `checkAgeSignals()`
 
-**AgeSignalsStatus.unknown**
-- On iOS 26.2+, indicates user is outside applicable region (e.g., not in regulated US states)
-- App should decide how to handle based on requirements
+**`checkAgeSignals()` hangs / never returns (iOS, pre-0.6.0)**
+- Caused by awaiting Apple's `isEligibleForAgeFeatures`, which can hang in the iOS 26.2.x window
+- Fixed in 0.6.0 (the eligibility pre-check was removed). Upgrade to 0.6.0+
 
 ## Example App
 

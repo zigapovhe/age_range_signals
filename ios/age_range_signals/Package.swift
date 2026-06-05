@@ -11,10 +11,16 @@ let package = Package(
     products: [
         .library(name: "age-range-signals", targets: ["age_range_signals"]),
     ],
+    dependencies: [
+        .package(name: "FlutterFramework", path: "../FlutterFramework"),
+    ],
     targets: [
         .target(
             name: "age_range_signals",
             path: ".",
+            dependencies: [
+                .product(name: "FlutterFramework", package: "FlutterFramework"),
+            ],
             sources: [
                 "Classes",
             ],

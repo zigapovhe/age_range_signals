@@ -22,7 +22,16 @@ allprojects {
 }
 
 apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
+
+// AGP 9+ provides built-in Kotlin support, so the kotlin-android plugin is no
+// longer applied. jvmTarget is configured via the kotlin { compilerOptions {} }
+// DSL (requires KGP 2.0+). See:
+// https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
 
 android {
     namespace = "si.povhe.age_range_signals"
@@ -34,17 +43,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
-
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"
         test.java.srcDirs += "src/test/kotlin"
     }
 
     defaultConfig {
-        minSdk = 21
+        // com.google.android.play:age-signals declares minSdkVersion 23,
+        // so the plugin (and any consuming app) must target API 23+.
+        minSdk = 23
     }
 
     dependencies {
