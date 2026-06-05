@@ -71,19 +71,22 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED ||
             userStatus == AgeSignalsVerificationStatus.DECLARED) {
-            val ageLower = mockDataMap?.get("ageLower") as? Int ?: 13
-            resultBuilder.setAgeLower(ageLower)
+            val ageLowerRaw = mockDataMap?.get("ageLower") as? Int
+            resultBuilder.setAgeLower(ageLowerRaw ?: 13)
 
-            // Honor an explicitly-provided null ageUpper so the open-ended top
-            // bucket (e.g. ageLower=18, ageUpper=null) is reproducible via mock data.
-            // Only fall back to the default (15) when no custom mock data was supplied.
-            val ageUpper = mockDataMap?.get("ageUpper") as? Int
-            if (ageUpper != null) {
-                resultBuilder.setAgeUpper(ageUpper)
-            } else if (mockDataMap == null) {
+            // Two cases produce a null ageUpper, distinguished by whether an explicit
+            // lower bound was given (the only signal that survives the Dart->map
+            // boundary, since toMap always includes the ageUpper key as null):
+            //  - explicit ageLower + omitted ageUpper -> open-ended top bucket
+            //    (e.g. ageLower=18, ageUpper=null), intentionally left unset
+            //  - no ageLower (no mock data at all, or a partial mock omitting both
+            //    bounds) -> apply the default supervised band (13-15)
+            val ageUpperRaw = mockDataMap?.get("ageUpper") as? Int
+            if (ageUpperRaw != null) {
+                resultBuilder.setAgeUpper(ageUpperRaw)
+            } else if (ageLowerRaw == null) {
                 resultBuilder.setAgeUpper(15)
             }
-            // else: custom mock data with a null ageUpper -> leave unset (null)
         }
 
         // installId is only set for supervised statuses, not for declared
