@@ -21,6 +21,7 @@
 * **Documentation**: Documented the iOS 1–3 age-gate limit on `initialize(ageGates:)`
 * **Android**: Migrated to AGP built-in Kotlin support (AGP 9+); removed the explicit `kotlin-android` plugin and moved `jvmTarget` to the `kotlin { compilerOptions {} }` DSL ([Flutter migration guide](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors))
 * **Build**: Raised the minimum supported versions to Flutter 3.44 / Dart 3.12, required by the built-in Kotlin migration
+* **iOS**: Declared the `FlutterFramework` dependency in the plugin's `Package.swift`, required by Flutter 3.41+ Swift Package Manager. Removes the "missing a dependency on FlutterFramework" build warning
 * **Example**: Updated the example app to Android Gradle Plugin 9.0.1 and removed its `kotlin-android` plugin
 
 ## 0.5.1
