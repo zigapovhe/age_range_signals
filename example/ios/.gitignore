@@ -12,6 +12,10 @@
 Icon?
 **/Pods/
 **/.symlinks/
+# This example uses Swift Package Manager. Flutter regenerates a Podfile only
+# when SPM is disabled, so it is not committed.
+Podfile
+Podfile.lock
 profile
 xcuserdata
 **/.generated/
