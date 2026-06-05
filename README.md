@@ -385,7 +385,7 @@ Result object containing age verification information.
 
 **§ `source` may be `null`** when the declaration type is neither self-declared nor guardian-declared (e.g., Apple's `paymentChecked` / `guardianPaymentChecked`, or an unrecognized/future type), even for `verified`/`supervised`.
 
-**Note:** iOS does not return `unknown` (as of 0.6.0). The previous `isEligibleForAgeFeatures` pre-check was removed (see [Regional Eligibility](#ios-testing)).
+**Note:** iOS does not return `unknown` (as of 0.6.0). The previous `isEligibleForAgeFeatures` pre-check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)).
 
 ### AgeSignalsStatus
 
@@ -397,7 +397,7 @@ Enum representing the verification status:
 - `supervisedApprovalDenied` - User is supervised and guardian denied approval (Android only)
 - `declared` - User declared their age through Google Play's age declaration flow (Android only)
 - `declined` - User declined to share age (iOS only)
-- `unknown` - Age information not available / user unverified or unsupervised (Android). As of 0.6.0, iOS no longer returns this (see [Regional Eligibility](#ios-testing))
+- `unknown` - Age information not available / user unverified or unsupervised (Android). As of 0.6.0, iOS no longer returns this (see [Regional Eligibility](#regional-eligibility-ios-262))
 
 ### AgeDeclarationSource
 
@@ -589,7 +589,7 @@ With age gates `[13, 16, 18]`, Apple's scenarios map through the plugin as follo
 
 For app-level UI/flow testing during development, you can also bypass age verification in debug builds with your own conditional logic.
 
-**Regional Eligibility (iOS 26.2+)**
+#### Regional Eligibility (iOS 26.2+)
 
 The plugin calls Apple's `requestAgeRange()` directly and does **not** pre-gate on `isEligibleForAgeFeatures`. Earlier versions (0.4.0-0.5.x) checked `isEligibleForAgeFeatures` first and returned `unknown` for users reported as outside an applicable region, but that property proved unreliable in the iOS 26.2.x window: it can hang indefinitely (which hung `checkAgeSignals()` entirely) and it reports `false` before the user has accepted any prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Following Apple's guidance, the plugin now treats `requestAgeRange()` as the source of truth.
 

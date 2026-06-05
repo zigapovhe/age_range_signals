@@ -2,7 +2,7 @@
 
 * **iOS**: Fixed `checkAgeSignals()` hanging indefinitely on iOS 26.2+. The plugin no longer gates on Apple's `isEligibleForAgeFeatures` (which can hang, and returns `false` before any prompt is accepted); it calls `requestAgeRange()` directly, per Apple's guidance.
   * **Breaking**: iOS no longer returns `AgeSignalsStatus.unknown` from the eligibility pre-check. Region eligibility is now reflected by `requestAgeRange()` itself.
-* **Android**: Raised `minSdk` from 21 to 23 to match `com.google.android.play:age-signals` (lower values hit a Gradle manifest-merge failure).
+* **Android**: Raised `minSdk` from 21 to 23 (the `com.google.android.play:age-signals` AAR declares `minSdkVersion 23`; lower values fail the Gradle manifest merge).
 * **Android**: Fixed `useMockData: true` returning `API_NOT_AVAILABLE` when Play Services is unavailable; the mock path now runs independently of the real manager.
 * **Android**: Mock data can now reproduce the open-ended top bucket (`ageLower=18, ageUpper=null`).
 * **Build**: Migrated to AGP 9 built-in Kotlin support and raised the minimums to Flutter 3.44 / Dart 3.12. Declared the `FlutterFramework` dependency in `Package.swift` (required by Flutter 3.41+ SPM; removes the build warning).
