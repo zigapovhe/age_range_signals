@@ -1,3 +1,28 @@
+## 0.6.0
+
+* **iOS**: Fixed `checkAgeSignals()` hanging indefinitely on iOS 26.2+
+  * The plugin awaited `AgeRangeService.isEligibleForAgeFeatures` up front (added in 0.4.0 for regional gating). That property is unreliable in the current iOS 26.2.x window: it can never return (hanging the whole call) and reports `false` before any prompt is accepted, only updating on a later relaunch (reported on the Apple Developer Forums)
+  * Per Apple's guidance, the plugin no longer gates on `isEligibleForAgeFeatures`; it calls `requestAgeRange()` directly, which is the source of truth
+  * **Behavior change**: iOS no longer returns `AgeSignalsStatus.unknown` from the eligibility pre-check. Region eligibility is now reflected by `requestAgeRange()` itself. Verified on-device against all of Apple's sandbox Age Assurance scenarios
+* **Android**: Raised `minSdk` from 21 to 23 to match the `com.google.android.play:age-signals` dependency (which declares `minSdkVersion 23`)
+  * Previously, consuming apps building at `minSdk 21` would hit a Gradle manifest-merge failure
+* **Android**: Fixed `useMockData: true` not working when Google Play Services / the real Age Signals API is unavailable
+  * The real-manager null check ran before the mock branch, so on emulators/devices without Play Services, mock mode incorrectly returned `API_NOT_AVAILABLE` instead of the mock result
+  * The mock path now runs independently of the real manager
+* **Android**: Mock data can now reproduce the open-ended top-bucket edge case (`ageLower=18, ageUpper=null`)
+  * An explicitly-provided null `ageUpper` is now honored instead of defaulting to 15 (the default still applies when no custom mock data is supplied)
+* **Documentation**: Updated legal/regulatory status
+  * **Texas SB 2420**: Reframed from "enforcement paused" to in effect as of June 4, 2026 under a temporary Fifth Circuit stay (not a final ruling)
+  * **Australia** and **Singapore**: Added as applicable regions for Apple's DeclaredAgeRange API
+  * **Utah** and **Louisiana**: Noted statutory compliance deadlines delayed to 2027 (HB 498 / HB 977)
+  * **Brazil**: Updated to reflect the Digital ECA being enforceable since March 17, 2026
+* **Documentation**: Corrected the Android minimum API in the README from 21 to 23
+* **Documentation**: Clarified iOS `AgeSignalsResult` nullability: `source` may be null for unrecognized declaration types, and `ageUpper` may be null for open-ended (18+) ranges
+* **Documentation**: Documented the iOS 1–3 age-gate limit on `initialize(ageGates:)`
+* **Android**: Migrated to AGP built-in Kotlin support (AGP 9+); removed the explicit `kotlin-android` plugin and moved `jvmTarget` to the `kotlin { compilerOptions {} }` DSL ([Flutter migration guide](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors))
+* **Build**: Raised the minimum supported versions to Flutter 3.44 / Dart 3.12, required by the built-in Kotlin migration
+* **Example**: Updated the example app to Android Gradle Plugin 9.0.1 and removed its `kotlin-android` plugin
+
 ## 0.5.1
 
 * **Android**: Updated `com.google.android.play:age-signals` to version 0.0.3 (#25, thanks to @nathanael540)
