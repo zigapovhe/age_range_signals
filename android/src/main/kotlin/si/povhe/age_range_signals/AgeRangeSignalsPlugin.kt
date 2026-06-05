@@ -38,19 +38,24 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
+        fakeManager.setNextAgeSignalsResult(buildMockResult(mockData))
+        return fakeManager
+    }
 
-        // Use custom mock data if provided, otherwise use defaults for backwards compatibility
-        // Default test result is for supervised user (13-15) to demonstrate age range functionality
-        //
-        // IMPORTANT: Age ranges are determined by Google Play's parental control settings,
-        // NOT by your app's configured age gates. Android ignores the ageGates parameter - it's iOS-only.
-        // Google Play returns predefined age bands: 0-12, 13-15, 16-17, 18+
-        val mockDataMap = mockData
-
-        // Extract status first
+    /**
+     * Builds the [AgeSignalsResult] returned by the fake manager from the optional
+     * mock data map. Extracted from [createFakeManager] so the mapping logic is
+     * unit-testable without the async Task layer.
+     *
+     * IMPORTANT: Age ranges are determined by Google Play's parental control settings,
+     * NOT by the app's configured age gates. Android ignores the ageGates parameter -
+     * it's iOS-only. Google Play returns predefined bands: 0-12, 13-15, 16-17, 18+.
+     */
+    internal fun buildMockResult(mockDataMap: Map<String, Any?>?): AgeSignalsResult {
+        // Default to a supervised user (13-15) for backwards compatibility when no
+        // custom mock data is supplied.
         val statusString = mockDataMap?.get("status") as? String ?: "supervised"
 
-        // Parse status string to enum
         val userStatus = when (statusString) {
             "verified" -> AgeSignalsVerificationStatus.VERIFIED
             "supervised" -> AgeSignalsVerificationStatus.SUPERVISED
@@ -61,12 +66,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             else -> AgeSignalsVerificationStatus.SUPERVISED
         }
 
-        // Build result with custom or default values
         val resultBuilder = AgeSignalsResult.builder().setUserStatus(userStatus)
 
-        // Only set age range and installId if status is supervised (or similar states)
-        // For verified status, these are typically null
-        // Extract these values only when needed to avoid unnecessary work
+        // Age range only applies to supervised-like states (verified is 18+, no range).
         if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED ||
@@ -89,7 +91,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             }
         }
 
-        // installId is only set for supervised statuses, not for declared
+        // installId is set for supervised statuses, not for declared/verified.
         if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
             userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED) {
@@ -97,9 +99,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             resultBuilder.setInstallId(installId)
         }
 
-        val fakeResult = resultBuilder.build()
-        fakeManager.setNextAgeSignalsResult(fakeResult)
-        return fakeManager
+        return resultBuilder.build()
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
