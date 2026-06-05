@@ -283,13 +283,9 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
 
   Widget _buildCheckButton() {
     return FilledButton.icon(
-      onPressed: _isLoading || !_isInitialized || _isIos
-          ? null
-          : _checkAgeSignals,
+      onPressed: _isLoading || !_isInitialized ? null : _checkAgeSignals,
       icon: const Icon(Icons.verified_user),
-      label: Text(
-        _isIos ? 'Unavailable on iOS in example app' : 'Check Age Signals',
-      ),
+      label: const Text('Check Age Signals'),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),
@@ -311,7 +307,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'iOS entitlement not available in example',
+                    'iOS real-device test',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.orange[800],
                       fontWeight: FontWeight.bold,
@@ -319,7 +315,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'The sample app does not include the com.apple.developer.declared-age-range entitlement or a signed identifier, so the DeclaredAgeRange API cannot run here. Build your own app with the entitlement to test on iOS.',
+                    'Runs the real DeclaredAgeRange API (iOS 26.2+). The App ID bundled with this example is not entitled, so Check returns a "Missing Entitlement" error here. That is expected. To see live results, build with your own App ID that has the com.apple.developer.declared-age-range capability registered, then sign into a Sandbox Apple Account set to an applicable region (Settings > Developer) and pick a scenario under Manage > Age Assurance. See the iOS Testing section of the README.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
