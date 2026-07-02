@@ -18,6 +18,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
     - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
 - [API Reference](#api-reference)
     - [AgeRangeSignals](#agerangesignals)
+    - [AgeSignalsMockData](#agesignalsmockdata)
     - [AgeSignalsResult](#agesignalsresult)
     - [AgeSignalsStatus](#agesignalsstatus)
     - [AgeDeclarationSource](#agedeclarationsource)
@@ -32,8 +33,8 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
     - [Android](#android-1)
     - [iOS](#ios-1)
 - [Troubleshooting](#troubleshooting)
-    - [Android](#android-2)
-    - [iOS](#ios-2)
+    - [Common Errors](#common-errors)
+    - [Platform-Specific Errors](#platform-specific-errors)
 - [Example App](#example-app)
 - [Contributing](#contributing)
 - [License](#license)
@@ -59,7 +60,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 **Note:** The iOS DeclaredAgeRange API is only available on iOS 26.0+. On older iOS versions, the plugin will return an `UnsupportedPlatformException`. Your app can support older iOS versions and handle this gracefully.
 
-**Note:** The Google Play Age Signals dependency (`com.google.android.play:age-signals`) declares `minSdkVersion 23`, so your app's `minSdkCompile`/`minSdk` must be **23 or higher**. Building at a lower `minSdk` will fail Gradle's manifest merge.
+**Note:** The Google Play Age Signals dependency (`com.google.android.play:age-signals`) declares `minSdkVersion 23`, so your app's `minSdk` (`minSdkVersion` in older projects) must be **23 or higher**. Building at a lower `minSdk` will fail Gradle's manifest merge.
 
 ## Choosing Your Integration Level
 
@@ -89,7 +90,7 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
-**Important:** The Play Age Signals API is currently in beta. As of June 4, 2026, Texas SB 2420 is in effect under a [temporary Fifth Circuit stay](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) of the December 2025 injunction, so the API may return live data for Texas users again (this status could change if the appeal is decided against Texas). Utah and Louisiana have delayed their app-store obligations to May 2027 and July 2027 respectively. The API only returns real data for users in regions where age-verification laws are in effect (e.g., applicable US states, plus Australia, Brazil, and Singapore for the iOS DeclaredAgeRange API). Use `useMockData: true` for testing otherwise.
+**Important:** The Play Age Signals API is currently in beta and only returns real data for users in regions where the underlying laws are in effect; see [Regulatory Status](#regulatory-status) for current dates. Use `useMockData: true` for testing otherwise.
 
 ### iOS
 
@@ -103,8 +104,8 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
     <key>com.apple.developer.declared-age-range</key>
     <true/>
 </dict>
- </plist>
- ```
+</plist>
+```
 
 2. Enable the **Declared Age Range** capability on your App ID. In Xcode, open your Runner target → **Signing & Capabilities** → **+ Capability** → add **Declared Age Range** (or enable it on your App ID in the [Developer portal](https://developer.apple.com/account/resources/identifiers/list)). This is **self-serve**; no request form or approval from Apple is required.
 
@@ -547,7 +548,7 @@ await AgeRangeSignals.instance.initialize(
 - Easier automated testing and manual QA
 - Default behavior (supervised 13-15) maintained for backward compatibility
 
-**Note**: The Google Play Age Signals API returns `ageLower` and `ageUpper` as integer values for supervised users. These represent the bounds of predefined age bands (default bands: 0-12, 13-15, 16-17, and 18+). For example, a supervised user aged 13-15 would have `ageLower=13` and `ageUpper=15`. For verified users (18+), these values are typically `null` since they don't need supervision. Age bands can be customized in Play Console based on your app's requirements.
+**Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`); verified users return `null` for both bounds. See [AgeSignalsResult](#agesignalsresult) for the full rules.
 
 ### iOS Testing
 
@@ -607,10 +608,8 @@ try {
 
 ### Android
 - The Play Age Signals API is currently in beta
-- **Texas**: SB 2420 is in effect as of June 4, 2026 under a [temporary Fifth Circuit stay](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) of the December 2025 injunction. The API may return live data for Texas users, but this could change if the appeal is decided against Texas
-- **Utah** and **Louisiana**: Both *statutory* compliance deadlines were delayed by a year, Utah to May 2027 and Louisiana to July 1, 2027. Platform (Apple/Google) rollout timing for these states may not align exactly with the statutory dates, so rely on the runtime signal rather than assuming when data becomes available
+- Only returns real data in regions where the laws are in effect (see [Regulatory Status](#regulatory-status) for current dates). Platform rollout timing may not align exactly with the statutory dates, so rely on the runtime signal rather than assuming when data becomes available
 - Use `useMockData: true` for testing until APIs go live in your target states
-- Only returns real data for users in applicable regions where laws are in effect
 - Requires Google Play Services to be installed and up to date
 
 ### iOS
@@ -658,7 +657,7 @@ try {
 - API is not available on the device or in this region
 - Ensure Google Play Services is installed and up to date
 - Verify the device has an active internet connection
-- Check if the user is in a region where the law is currently in effect (Texas is in effect as of June 4, 2026 under a temporary stay; Utah and Louisiana have been delayed to May 2027 and July 2027 respectively)
+- Check if the user is in a region where the law is currently in effect (see [Regulatory Status](#regulatory-status))
 
 **iOS**
 
