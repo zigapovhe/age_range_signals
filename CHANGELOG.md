@@ -1,3 +1,9 @@
+## 0.6.2
+
+* **Android**: Fixed the Gradle build on hosts not using AGP 9 built-in Kotlin. The Kotlin plugin is now applied only when the host needs it (AGP <9, or `android.builtInKotlin=false`), so the plugin works with AGP 9 built-in Kotlin as well as AGP 8.x + KGP 2.0+. No changes required in consuming apps.
+* **Android**: Removed the unused standalone Gradle wrapper from `android/`.
+* **Docs**: Added an integration levels table (#30), consolidated regulatory status into one section, fixed broken table-of-contents links, and clarified why iOS never returns `supervisedApprovalDenied` (#24).
+
 ## 0.6.1
 
 * **iOS**: Fixed SwiftPM build failure from 0.6.0 caused by a wrong argument order in `Package.swift`. CocoaPods was not affected.

@@ -160,6 +160,12 @@ enum AgeSignalsStatus {
   ///
   /// On Android, this indicates the user is under parental controls and
   /// the guardian has explicitly denied the access request.
+  ///
+  /// iOS never returns this: DeclaredAgeRange has no denied state, so a
+  /// guardian decline or consent revocation surfaces as [supervised] with
+  /// the user's real age range. The guardian approve/deny signal itself
+  /// lives in Apple's PermissionKit and App Store Server Notifications,
+  /// which this plugin does not wrap.
   supervisedApprovalDenied,
 
   /// User declared their age through Google Play (Android only).

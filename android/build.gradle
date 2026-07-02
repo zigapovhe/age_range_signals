@@ -1,32 +1,21 @@
 group = "si.povhe.age_range_signals"
 version = "1.0-SNAPSHOT"
 
-buildscript {
-    ext.kotlin_version = "2.2.21"
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.13.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
 apply plugin: "com.android.library"
 
-// AGP 9+ provides built-in Kotlin support, so the kotlin-android plugin is no
-// longer applied. jvmTarget is configured via the kotlin { compilerOptions {} }
-// DSL (requires KGP 2.0+). See:
-// https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+// AGP 9 compiles Kotlin itself unless the host app opts out via
+// android.builtInKotlin=false (the "true" fallback matches AGP 9's default).
+// On AGP 8, or when the host opted out, the Kotlin plugin must still be
+// applied here; the kotlin { compilerOptions } DSL below needs KGP 2.0+.
+def builtInKotlin = providers.gradleProperty("android.builtInKotlin")
+    .getOrElse("true").toBoolean()
+def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
+    .tokenize('.')[0].toInteger()
+
+if (agpMajor < 9 || !builtInKotlin) {
+    apply plugin: "org.jetbrains.kotlin.android"
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
@@ -49,14 +38,14 @@ android {
     }
 
     defaultConfig {
-        // com.google.android.play:age-signals declares minSdkVersion 23,
-        // so the plugin (and any consuming app) must target API 23+.
         minSdk = 23
     }
 
     dependencies {
         implementation("com.google.android.play:age-signals:0.0.3")
-        testImplementation("org.jetbrains.kotlin:kotlin-test")
+        // Explicit artifact + version: KGP's test-framework auto-selection is
+        // unavailable when AGP 9 built-in Kotlin is active.
+        testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.2.20")
         testImplementation("org.mockito:mockito-core:5.20.0")
     }
 
