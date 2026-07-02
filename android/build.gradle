@@ -3,6 +3,10 @@ version = "1.0-SNAPSHOT"
 
 apply plugin: "com.android.library"
 
+// AGP 9 compiles Kotlin itself unless the host app opts out via
+// android.builtInKotlin=false (the "true" fallback matches AGP 9's default).
+// On AGP 8, or when the host opted out, the Kotlin plugin must still be
+// applied here; the kotlin { compilerOptions } DSL below needs KGP 2.0+.
 def builtInKotlin = providers.gradleProperty("android.builtInKotlin")
     .getOrElse("true").toBoolean()
 def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION

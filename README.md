@@ -90,6 +90,8 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 
 2. The Play Age Signals API requires Google Play Services to be installed and up to date.
 
+3. The plugin builds on AGP 9 (built-in Kotlin) as well as AGP 8.x, where it needs the Kotlin Gradle plugin 2.0 or newer on your project's classpath (any recent Flutter template already provides this).
+
 **Important:** The Play Age Signals API is currently in beta and only returns real data for users in regions where the underlying laws are in effect; see [Regulatory Status](#regulatory-status) for current dates. Use `useMockData: true` for testing otherwise.
 
 ### iOS

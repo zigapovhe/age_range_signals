@@ -1,6 +1,7 @@
 ## 0.6.2
 
 * **Android**: Fixed the Gradle build on hosts that don't use AGP 9 built-in Kotlin. The plugin no longer pins AGP/KGP on the buildscript classpath and applies the Kotlin plugin only when the host needs it (AGP <9, or `android.builtInKotlin=false`). Works with AGP 9 built-in Kotlin as well as AGP 8.x + KGP 2.0+; no changes required in consuming apps.
+* **Android**: Removed the unused standalone Gradle wrapper from `android/` (the plugin builds through the consuming app, matching the current plugin template).
 
 ## 0.6.1
 
