@@ -1,3 +1,7 @@
+## 0.6.2
+
+* **Android**: Fixed the Gradle build on hosts that don't use AGP 9 built-in Kotlin. The plugin no longer pins AGP/KGP on the buildscript classpath and applies the Kotlin plugin only when the host needs it (AGP <9, or `android.builtInKotlin=false`). Works with AGP 9 built-in Kotlin as well as AGP 8.x + KGP 2.0+; no changes required in consuming apps.
+
 ## 0.6.1
 
 * **iOS**: Fixed SwiftPM build failure from 0.6.0 caused by a wrong argument order in `Package.swift`. CocoaPods was not affected.
