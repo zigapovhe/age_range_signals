@@ -6,9 +6,8 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 - [Features](#features)
 - [Platform Support](#platform-support)
-- [Important: Brazilian Digital ECA Law (Lei 15.211)](#important-brazilian-digital-eca-law-lei-15211)
-- [Important: Australia Age Assurance](#important-australia-age-assurance)
-- [Important: Texas SB 2420 In Effect (Temporary Stay)](#important-texas-sb-2420-in-effect-temporary-stay)
+- [Choosing Your Integration Level](#choosing-your-integration-level)
+- [Regulatory Status](#regulatory-status)
 - [Platform Setup](#platform-setup)
     - [Android](#android)
     - [iOS](#ios)
@@ -62,33 +61,25 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 
 **Note:** The Google Play Age Signals dependency (`com.google.android.play:age-signals`) declares `minSdkVersion 23`, so your app's `minSdkCompile`/`minSdk` must be **23 or higher**. Building at a lower `minSdk` will fail Gradle's manifest merge.
 
-## Important: Brazilian Digital ECA Law (Lei 15.211)
+## Choosing Your Integration Level
 
-> ℹ️ **Brazil's Digital ECA law has been enforceable since March 17, 2026.** Apps targeting Brazil must use `com.google.android.play:age-signals` version 0.0.3 or higher for full compliance. This plugin now includes the required version. See [Google Play Age Signals documentation](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) and [Law details](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm).
+The plugin returns one age signal; how far you build on it depends on your app, not only on which laws apply. Start at Level 1 and move up only when you actually gate content on age.
 
-## Important: Australia Age Assurance
+> **Not legal advice.** This maps *plugin usage* to common app shapes. Whether a level meets your obligations depends on your app, regions, and counsel.
 
-> ℹ️ **Australia is an applicable region for the DeclaredAgeRange API.** Apple lists Australia (alongside Brazil and Singapore) among the regions where age requirements apply. From **February 24, 2026**, Apple blocks users in Australia from downloading apps rated 18+ unless they have been confirmed to be adults. See [Apple Developer News](https://developer.apple.com/news/?id=f5zj08ey).
+| Level | Who it's for | What you do with the plugin |
+|-------|--------------|-----------------------------|
+| **1. Minimal** | Generally-available apps, no age-gated content | Call `checkAgeSignals()` once, optionally log the result, leave the UX unchanged. See [Generally Available App](#generally-available-app-no-age-restrictions). |
+| **2. Targeted** | Apps with age-distinct areas (under/over 18, or 18+ only) | Gate those areas on `status` and the returned age range. See [Basic Example](#basic-example) and [18+ Only App](#18-only-app). |
+| **3. Full** | Apps squarely in scope of these laws | Treat the client signal as one input: enforce on your **server** (the client result can be spoofed), re-check when state changes, and handle every `status` and [exception](#exceptions). |
 
-**What this means:**
-- Apple's DeclaredAgeRange API may **return live responses** for users in Australia (not just regulated US states)
-- This is separate from Australia's **Online Safety Amendment (Social Media Minimum Age) Act 2024**, in effect since **December 10, 2025**, which requires age-restricted social media platforms to take reasonable steps to keep under-16 users off their platforms ([eSafety Commissioner](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions))
+## Regulatory Status
 
-> **Note:** This callout concerns age *verification / range signals*. It is unrelated to Australia's App Store content *rating* values (15+, R 18+), which are a separate classification system this plugin does not deal with.
+These laws are in flux. The plugin handles missing data gracefully, so the advice is the same throughout: keep it integrated and rely on the runtime signal rather than hard-coding which regions are live. Dates are current as of this release.
 
-## Important: Texas SB 2420 In Effect (Temporary Stay)
-
-> **As of June 4, 2026, Texas SB 2420 (the App Store Accountability Act) is in effect.** On May 28, 2026, the U.S. Court of Appeals for the Fifth Circuit [stayed the December 2025 injunction](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) that had blocked the law, allowing it to take effect while the appeal proceeds. Apple has [confirmed](https://www.macrumors.com/2026/06/03/apple-app-store-texas-sb-2420/) it is bringing App Store age verification to Texas as of June 4.
-
-**What this means:**
-- Google Play Age Signals and Apple's DeclaredAgeRange APIs may **return live responses** for Texas users again
-- **Utah** and **Louisiana** both *delayed* their app-store obligations by a year, Utah to **May 2027** ([HB 498](https://technologylaw.fkks.com/post/102mpap/utah-first-state-to-amend-its-app-store-accountability-act)) and Louisiana to **July 1, 2027** ([HB 977](https://www.alstonprivacy.com/louisiana-delays-app-store-accountability-effective-date-to-july-2027/))
-
-> **This is a temporary stay, not a final ruling.** The Fifth Circuit issued an administrative stay to preserve the status quo while it considers the appeal; the federal district court had found SB 2420 *likely* violates the First Amendment. The law could be re-blocked if the appeal is decided against Texas.
-
-**Recommendation:** Keep this plugin integrated in your app. The legal status may change again, but the plugin gracefully handles cases where APIs don't return data, so there's no downside to being prepared either way.
-
-For more details, see [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
+- **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026. Requires `com.google.android.play:age-signals` 0.0.3+, which this plugin bundles. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements)
+- **Australia:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Australia from downloading 18+ apps unless confirmed adult. Separate from the [Social Media Minimum Age Act](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions) (in effect December 10, 2025), and from App Store content *ratings*, which this plugin does not handle. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
+- **Texas (SB 2420):** In effect since June 4, 2026 under a [temporary Fifth Circuit stay](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) of the December 2025 injunction, so the APIs may return live data for Texas users. This is not a final ruling and could be re-blocked. **Utah** delayed to May 2027 ([HB 498](https://technologylaw.fkks.com/post/102mpap/utah-first-state-to-amend-its-app-store-accountability-act)); **Louisiana** to July 1, 2027 ([HB 977](https://www.alstonprivacy.com/louisiana-delays-app-store-accountability-effective-date-to-july-2027/)). See [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
 
 ## Platform Setup
 
