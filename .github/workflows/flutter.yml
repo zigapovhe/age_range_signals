@@ -47,6 +47,9 @@ jobs:
           channel: stable
       - run: flutter pub get
         working-directory: example
-      - name: Run Android unit tests and build
-        run: ./gradlew :age_range_signals:testDebugUnitTest :app:assembleDebug --console=plain
+      - name: Build example APK (also generates the gradle wrapper)
+        run: flutter build apk --debug
+        working-directory: example
+      - name: Run Android unit tests
+        run: ./gradlew :age_range_signals:testDebugUnitTest --console=plain
         working-directory: example/android
