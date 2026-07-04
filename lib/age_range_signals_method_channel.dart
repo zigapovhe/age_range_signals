@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'age_range_signals_platform_interface.dart';
 import 'src/exceptions/age_signals_exception.dart';
+import 'src/models/age_regulatory_feature.dart';
 import 'src/models/age_signals_mock_data.dart';
 import 'src/models/age_signals_result.dart';
 
@@ -37,6 +38,38 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
         throw const AgeSignalsException('Received null result from platform');
       }
       return AgeSignalsResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
+  @override
+  Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() async {
+    try {
+      final raw = await methodChannel.invokeListMethod<String>(
+        'getRequiredRegulatoryFeatures',
+      );
+      if (raw == null) {
+        return const {};
+      }
+      return raw
+          .map(AgeRegulatoryFeature.fromName)
+          .whereType<AgeRegulatoryFeature>()
+          .toSet();
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
+  @override
+  Future<void> showSignificantUpdateAcknowledgment({
+    required String updateDescription,
+  }) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'showSignificantUpdateAcknowledgment',
+        {'updateDescription': updateDescription},
+      );
     } on PlatformException catch (e) {
       throw _handlePlatformException(e);
     }

@@ -4,9 +4,8 @@ import 'package:age_range_signals/age_range_signals_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-class MockAgeRangeSignalsPlatform
-    with MockPlatformInterfaceMixin
-    implements AgeRangeSignalsPlatform {
+class MockAgeRangeSignalsPlatform extends AgeRangeSignalsPlatform
+    with MockPlatformInterfaceMixin {
   bool _initialized = false;
   List<int>? _ageGates;
 
@@ -35,9 +34,8 @@ class MockAgeRangeSignalsPlatform
   }
 }
 
-class MockAgeRangeSignalsPlatformSupervised
-    with MockPlatformInterfaceMixin
-    implements AgeRangeSignalsPlatform {
+class MockAgeRangeSignalsPlatformSupervised extends AgeRangeSignalsPlatform
+    with MockPlatformInterfaceMixin {
   bool _initialized = false;
 
   @override
@@ -64,9 +62,8 @@ class MockAgeRangeSignalsPlatformSupervised
   }
 }
 
-class MockAgeRangeSignalsPlatformWithMockData
-    with MockPlatformInterfaceMixin
-    implements AgeRangeSignalsPlatform {
+class MockAgeRangeSignalsPlatformWithMockData extends AgeRangeSignalsPlatform
+    with MockPlatformInterfaceMixin {
   bool _initialized = false;
   AgeSignalsMockData? _mockData;
 
