@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Result returned from checking age signals.
 ///
 /// Contains age verification information from the platform's age verification API.
@@ -11,6 +13,8 @@ class AgeSignalsResult {
     this.ageUpper,
     this.source,
     this.installId,
+    this.activeParentalControls,
+    this.mostRecentApprovalDate,
   });
 
   /// The verification status returned by the platform.
@@ -42,6 +46,21 @@ class AgeSignalsResult {
   /// Only available on Android.
   final String? installId;
 
+  /// Parental controls active on the user's account (iOS only).
+  ///
+  /// Raw identifiers as reported by Apple's DeclaredAgeRange framework
+  /// (e.g. `communicationSafety`). Passed through as strings so new values
+  /// added by Apple survive without a plugin update. Null on Android and
+  /// when Apple reports none.
+  final List<String>? activeParentalControls;
+
+  /// When a guardian most recently approved the age range (Android only).
+  ///
+  /// Reported by the Play Age Signals API for supervised users. Useful for
+  /// deciding whether a cached signal is fresh enough. Null on iOS and when
+  /// Google does not report it.
+  final DateTime? mostRecentApprovalDate;
+
   /// Creates a copy of this result with the given fields replaced with new values.
   AgeSignalsResult copyWith({
     AgeSignalsStatus? status,
@@ -49,6 +68,8 @@ class AgeSignalsResult {
     int? ageUpper,
     AgeDeclarationSource? source,
     String? installId,
+    List<String>? activeParentalControls,
+    DateTime? mostRecentApprovalDate,
   }) {
     return AgeSignalsResult(
       status: status ?? this.status,
@@ -56,13 +77,19 @@ class AgeSignalsResult {
       ageUpper: ageUpper ?? this.ageUpper,
       source: source ?? this.source,
       installId: installId ?? this.installId,
+      activeParentalControls:
+          activeParentalControls ?? this.activeParentalControls,
+      mostRecentApprovalDate:
+          mostRecentApprovalDate ?? this.mostRecentApprovalDate,
     );
   }
 
   @override
   String toString() {
     return 'AgeSignalsResult(status: $status, ageLower: $ageLower, '
-        'ageUpper: $ageUpper, source: $source, installId: $installId)';
+        'ageUpper: $ageUpper, source: $source, installId: $installId, '
+        'activeParentalControls: $activeParentalControls, '
+        'mostRecentApprovalDate: $mostRecentApprovalDate)';
   }
 
   @override
@@ -74,12 +101,22 @@ class AgeSignalsResult {
         other.ageLower == ageLower &&
         other.ageUpper == ageUpper &&
         other.source == source &&
-        other.installId == installId;
+        other.installId == installId &&
+        listEquals(other.activeParentalControls, activeParentalControls) &&
+        other.mostRecentApprovalDate == mostRecentApprovalDate;
   }
 
   @override
   int get hashCode {
-    return Object.hash(status, ageLower, ageUpper, source, installId);
+    return Object.hash(
+      status,
+      ageLower,
+      ageUpper,
+      source,
+      installId,
+      Object.hashAll(activeParentalControls ?? const []),
+      mostRecentApprovalDate,
+    );
   }
 
   /// Creates an [AgeSignalsResult] from a map.
@@ -95,6 +132,16 @@ class AgeSignalsResult {
       }
     }
 
+    final rawControls = map['activeParentalControls'];
+    final controls = rawControls is List
+        ? rawControls.map((e) => e.toString()).toList()
+        : null;
+
+    final rawApproval = map['mostRecentApprovalDate'];
+    final approvalDate = rawApproval is int
+        ? DateTime.fromMillisecondsSinceEpoch(rawApproval, isUtc: true)
+        : null;
+
     return AgeSignalsResult(
       status: AgeSignalsStatus.values.firstWhere(
         (e) => e.name == map['status'],
@@ -104,6 +151,8 @@ class AgeSignalsResult {
       ageUpper: map['ageUpper'] as int?,
       source: source,
       installId: map['installId'] as String?,
+      activeParentalControls: controls,
+      mostRecentApprovalDate: approvalDate,
     );
   }
 
@@ -115,6 +164,8 @@ class AgeSignalsResult {
       'ageUpper': ageUpper,
       'source': source?.name,
       'installId': installId,
+      'activeParentalControls': activeParentalControls,
+      'mostRecentApprovalDate': mostRecentApprovalDate?.millisecondsSinceEpoch,
     };
   }
 }
