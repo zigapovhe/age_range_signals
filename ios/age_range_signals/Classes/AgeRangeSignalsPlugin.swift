@@ -1,4 +1,5 @@
 import Flutter
+import Synchronization
 import UIKit
 
 #if canImport(DeclaredAgeRange)
@@ -267,29 +268,52 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     /// properties have a history of hanging (isEligibleForAgeFeatures on
     /// 26.2, Apple forums threads 807906 & 809829), so every non-UI call we
     /// make gets a deadline instead of trusting the OS to return.
+    ///
+    /// Deliberately NOT a task group race: a throwing task group awaits all
+    /// children before propagating the timeout error, so a hung Apple call
+    /// that ignores cancellation would hang the group too (verified on the
+    /// iOS 26.4 simulator). The continuation resumes on whichever side
+    /// finishes first and abandons the loser.
     @available(iOS 26.0, *)
     private func withDeadline<T: Sendable>(
         seconds: Double,
         _ operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
-                    NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
-                ])
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, any Error>) in
+            let resumed = Mutex(false)
+            @Sendable func resumeOnce(_ resume: () -> Void) {
+                let isFirst = resumed.withLock { alreadyResumed -> Bool in
+                    if alreadyResumed { return false }
+                    alreadyResumed = true
+                    return true
+                }
+                if isFirst { resume() }
             }
-            let value = try await group.next()!
-            group.cancelAll()
-            return value
+
+            let operationTask = Task {
+                do {
+                    let value = try await operation()
+                    resumeOnce { continuation.resume(returning: value) }
+                } catch {
+                    resumeOnce { continuation.resume(throwing: error) }
+                }
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                resumeOnce {
+                    operationTask.cancel()
+                    continuation.resume(throwing: NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
+                        NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
+                    ]))
+                }
+            }
         }
     }
 
     private func handleGetRequiredRegulatoryFeatures(result: @escaping FlutterResult) {
         #if canImport(DeclaredAgeRange) && compiler(>=6.3)
         if #available(iOS 26.4, *) {
-            Task {
+            Task { @MainActor in
                 do {
                     let features = try await self.withDeadline(seconds: 10) {
                         try await AgeRangeService.shared.requiredRegulatoryFeatures
@@ -307,6 +331,14 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         }
                     }
                     result(names)
+                } catch AgeRangeService.Error.notAvailable {
+                    // Documented: "notAvailable if the regulatory feature's
+                    // service is unavailable."
+                    result(FlutterError(
+                        code: "API_NOT_AVAILABLE",
+                        message: "The regulatory features service is unavailable",
+                        details: nil
+                    ))
                 } catch {
                     let nsError = error as NSError
                     result(FlutterError(
@@ -353,6 +385,22 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         updateDescription: updateDescription
                     )
                     result(nil)
+                } catch is CancellationError {
+                    result(FlutterError(
+                        code: "USER_CANCELLED",
+                        message: "The acknowledgment was cancelled",
+                        details: nil
+                    ))
+                } catch AgeRangeService.Error.notAvailable {
+                    // Apple documents no cancellation error for this sheet;
+                    // its pattern elsewhere in the framework is to surface a
+                    // person's refusal as notAvailable, so this can mean
+                    // either "service unavailable" or "person dismissed it".
+                    result(FlutterError(
+                        code: "API_NOT_AVAILABLE",
+                        message: "The acknowledgment is unavailable or the person dismissed it",
+                        details: nil
+                    ))
                 } catch {
                     let nsError = error as NSError
                     if error.localizedDescription.lowercased().contains("cancel") {
