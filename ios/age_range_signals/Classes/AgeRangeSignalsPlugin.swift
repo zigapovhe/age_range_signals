@@ -20,6 +20,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             handleInitialize(call: call, result: result)
         case "checkAgeSignals":
             handleCheckAgeSignals(result: result)
+        case "getRequiredRegulatoryFeatures":
+            handleGetRequiredRegulatoryFeatures(result: result)
+        case "showSignificantUpdateAcknowledgment":
+            handleShowSignificantUpdateAcknowledgment(call: call, result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -120,7 +124,9 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         "ageLower": NSNull(),
                         "ageUpper": NSNull(),
                         "source": NSNull(),
-                        "installId": NSNull()
+                        "installId": NSNull(),
+                        "activeParentalControls": NSNull(),
+                        "mostRecentApprovalDate": NSNull()
                     ])
 
                 case .sharing(let range):
@@ -142,12 +148,17 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     // Otherwise supervised (may be under supervision or below threshold)
                     let status = lowerBound >= highestGate ? "verified" : "supervised"
 
+                    let parentalControls = self.parentalControlNames(range.activeParentalControls)
+
                     result([
                         "status": status,
                         "ageLower": range.lowerBound as Any? ?? NSNull(),
                         "ageUpper": range.upperBound as Any? ?? NSNull(),
                         "source": source as Any? ?? NSNull(),
-                        "installId": NSNull()
+                        "installId": NSNull(),
+                        "activeParentalControls": parentalControls.isEmpty
+                            ? NSNull() : parentalControls,
+                        "mostRecentApprovalDate": NSNull()
                     ])
 
                 @unknown default:
@@ -220,6 +231,161 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             details: nil
         ))
         #endif
+    }
+
+    #if canImport(DeclaredAgeRange)
+    /// Translates Apple's ParentalControls option set into stable string
+    /// identifiers for the channel. Flags this build does not know about are
+    /// passed through via their description so they are not silently dropped.
+    @available(iOS 26.0, *)
+    private func parentalControlNames(_ controls: AgeRangeService.ParentalControls) -> [String] {
+        var names: [String] = []
+        var known: AgeRangeService.ParentalControls = [.communicationLimits]
+        if controls.contains(.communicationLimits) {
+            names.append("communicationLimits")
+        }
+        #if compiler(>=6.3)
+        // Deprecated in the 26.4 SDK in favor of requiredRegulatoryFeatures,
+        // but still the only source of this signal on iOS 26.2 and 26.3
+        // devices, so we keep reporting it.
+        if #available(iOS 26.2, *) {
+            known.insert(.significantAppChangeApprovalRequired)
+            if controls.contains(.significantAppChangeApprovalRequired) {
+                names.append("significantAppChangeApprovalRequired")
+            }
+        }
+        #endif
+        let unknown = controls.subtracting(known)
+        if !unknown.isEmpty {
+            names.append(unknown.description)
+        }
+        return names
+    }
+    #endif
+
+    /// Races an async operation against a deadline. Apple's age-assurance
+    /// properties have a history of hanging (isEligibleForAgeFeatures on
+    /// 26.2, Apple forums threads 807906 & 809829), so every non-UI call we
+    /// make gets a deadline instead of trusting the OS to return.
+    @available(iOS 26.0, *)
+    private func withDeadline<T: Sendable>(
+        seconds: Double,
+        _ operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
+                    NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
+                ])
+            }
+            let value = try await group.next()!
+            group.cancelAll()
+            return value
+        }
+    }
+
+    private func handleGetRequiredRegulatoryFeatures(result: @escaping FlutterResult) {
+        #if canImport(DeclaredAgeRange) && compiler(>=6.3)
+        if #available(iOS 26.4, *) {
+            Task {
+                do {
+                    let features = try await self.withDeadline(seconds: 10) {
+                        try await AgeRangeService.shared.requiredRegulatoryFeatures
+                    }
+                    let names: [String] = features.map { feature in
+                        switch feature {
+                        case .declaredAgeRangeRequired:
+                            return "declaredAgeRangeRequired"
+                        case .significantAppChangeRequiresAdultNotification:
+                            return "significantAppChangeRequiresAdultNotification"
+                        case .significantAppChangeRequiresParentalConsent:
+                            return "significantAppChangeRequiresParentalConsent"
+                        @unknown default:
+                            return String(describing: feature)
+                        }
+                    }
+                    result(names)
+                } catch {
+                    let nsError = error as NSError
+                    result(FlutterError(
+                        code: "API_ERROR",
+                        message: "requiredRegulatoryFeatures failed: \(error.localizedDescription)",
+                        details: "Domain: \(nsError.domain) | Code: \(nsError.code)"
+                    ))
+                }
+            }
+            return
+        }
+        #endif
+        // Below iOS 26.4, or built with an SDK that predates the API:
+        // nothing is required, by definition of "we cannot know". Returning
+        // an empty list (not an error) keeps the Dart contract simple.
+        result([String]())
+    }
+
+    private func handleShowSignificantUpdateAcknowledgment(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        #if canImport(DeclaredAgeRange) && compiler(>=6.3)
+        if #available(iOS 26.4, *) {
+            guard let args = call.arguments as? [String: Any],
+                  let updateDescription = args["updateDescription"] as? String,
+                  !updateDescription.isEmpty else {
+                result(FlutterError(
+                    code: "API_ERROR",
+                    message: "updateDescription must be a non-empty string",
+                    details: nil
+                ))
+                return
+            }
+            guard let windowScene = activeWindowScene() else {
+                result(FlutterError(
+                    code: "PRESENTATION_CONTEXT_UNAVAILABLE",
+                    message: "Unable to find an active window scene to present the acknowledgment sheet",
+                    details: nil
+                ))
+                return
+            }
+            Task { @MainActor in
+                do {
+                    try await AgeRangeService.shared.showSignificantUpdateAcknowledgment(
+                        in: windowScene,
+                        updateDescription: updateDescription
+                    )
+                    result(nil)
+                } catch {
+                    let nsError = error as NSError
+                    if error.localizedDescription.lowercased().contains("cancel") {
+                        result(FlutterError(
+                            code: "USER_CANCELLED",
+                            message: "User dismissed the acknowledgment sheet",
+                            details: "Domain: \(nsError.domain) | Code: \(nsError.code)"
+                        ))
+                    } else {
+                        result(FlutterError(
+                            code: "API_ERROR",
+                            message: "showSignificantUpdateAcknowledgment failed: \(error.localizedDescription)",
+                            details: "Domain: \(nsError.domain) | Code: \(nsError.code)"
+                        ))
+                    }
+                }
+            }
+            return
+        }
+        #endif
+        result(FlutterError(
+            code: "UNSUPPORTED_PLATFORM",
+            message: "Significant update acknowledgment requires iOS 26.4 and an app built with the iOS 26.4 SDK",
+            details: nil
+        ))
+    }
+
+    /// Finds the foreground-active window scene; the significant update
+    /// acknowledgment sheet presents on a scene, not a view controller.
+    private func activeWindowScene() -> UIWindowScene? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
     }
 
     /// Finds a view controller suitable for presenting the age range prompt.

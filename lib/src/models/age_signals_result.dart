@@ -49,7 +49,7 @@ class AgeSignalsResult {
   /// Parental controls active on the user's account (iOS only).
   ///
   /// Raw identifiers as reported by Apple's DeclaredAgeRange framework
-  /// (e.g. `communicationSafety`). Passed through as strings so new values
+  /// (e.g. `communicationLimits`). Passed through as strings so new values
   /// added by Apple survive without a plugin update. Null on Android and
   /// when Apple reports none.
   final List<String>? activeParentalControls;
