@@ -5,6 +5,7 @@ import 'src/models/age_signals_mock_data.dart';
 export 'src/models/age_signals_result.dart';
 export 'src/models/age_signals_mock_data.dart';
 export 'src/exceptions/age_signals_exception.dart';
+export 'src/models/age_regulatory_feature.dart';
 
 /// Flutter plugin for age verification.
 ///
