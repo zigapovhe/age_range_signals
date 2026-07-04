@@ -14,6 +14,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - [Usage](#usage)
     - [Basic Example](#basic-example)
     - [Complete Example](#complete-example)
+    - [Regulatory Features (iOS 26.4+)](#regulatory-features-ios-264)
     - [18+ Only App](#18-only-app)
     - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
 - [API Reference](#api-reference)
@@ -22,6 +23,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
     - [AgeSignalsResult](#agesignalsresult)
     - [AgeSignalsStatus](#agesignalsstatus)
     - [AgeDeclarationSource](#agedeclarationsource)
+    - [AgeRegulatoryFeature](#ageregulatoryfeature)
     - [Exceptions](#exceptions)
 - [Legal Compliance](#legal-compliance)
     - [Important Usage Restrictions](#important-usage-restrictions)
@@ -46,6 +48,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - ✅ Cross-platform support for Android and iOS
 - ✅ Google Play Age Signals API integration for Android (API 23+)
 - ✅ Apple DeclaredAgeRange API integration for iOS (26.0+)
+- ✅ Regulatory feature detection and significant update acknowledgment for iOS (26.4+)
 - ✅ Swift Package Manager (SPM) support for iOS
 - ✅ Configurable age gates for iOS
 - ✅ Type-safe Dart API with structured error handling
@@ -239,6 +242,42 @@ Future<void> checkUserAge() async {
 }
 ```
 
+### Regulatory Features (iOS 26.4+)
+
+On iOS 26.4+ you can ask Apple which regulatory actions apply to the current user before deciding whether to prompt at all:
+
+```dart
+final features =
+    await AgeRangeSignals.instance.getRequiredRegulatoryFeatures();
+
+if (features.contains(AgeRegulatoryFeature.declaredAgeRangeRequired)) {
+  // Apple requires this user to share an age range with your app.
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+  // ...
+}
+
+if (features
+    .contains(AgeRegulatoryFeature.significantAppChangeRequiresAdultNotification)) {
+  // You shipped a change regulators consider significant; show Apple's sheet.
+  await AgeRangeSignals.instance.showSignificantUpdateAcknowledgment(
+    updateDescription: 'We added social features and public profiles.',
+  );
+}
+```
+
+An empty set means Apple affirmatively reports that nothing is required. On Android the set is always empty (the Play API has no equivalent concept). On iOS below 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement cannot be checked; catch it and keep your own regional logic for those devices:
+
+```dart
+Set<AgeRegulatoryFeature> features;
+try {
+  features = await AgeRangeSignals.instance.getRequiredRegulatoryFeatures();
+} on UnsupportedPlatformException {
+  // Older iOS: Apple cannot report requirements here. Fall back to your
+  // own region-based decision about whether to prompt.
+  features = const {};
+}
+```
+
 ### 18+ Only App
 
 If your app is strictly 18+, set a single gate at 18 so the API classifies the user above/below that threshold.
@@ -292,11 +331,15 @@ Main class for interacting with the plugin.
 #### Methods
 
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
-  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`).
+  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
   - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
   - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user.
+
+- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means Apple affirmatively reports nothing is required; if `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
+
+- `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Completing normally means the person acknowledged; every other outcome throws. `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op. `ApiNotAvailableException` when Apple reports the sheet unavailable, which Apple also uses when the person dismisses it, so don't treat that as proof the sheet never appeared. `UserCancelledException` on explicit cancellation and `ApiErrorException` for other failures.
 
 ### AgeSignalsMockData
 
@@ -311,6 +354,7 @@ AgeSignalsMockData({
   int? ageUpper,
   AgeDeclarationSource? source,
   String? installId,
+  DateTime? mostRecentApprovalDate,
 })
 ```
 
@@ -321,6 +365,7 @@ AgeSignalsMockData({
 - `int? ageUpper` - Mock upper bound of age range (for supervised statuses)
 - `AgeDeclarationSource? source` - Reserved for future use (currently unused)
 - `String? installId` - Mock installation ID (Android only)
+- `DateTime? mostRecentApprovalDate` - Mock guardian approval date (Android only)
 
 #### Example (Android only)
 
@@ -349,6 +394,8 @@ Result object containing age verification information.
 - `int? ageUpper` - Upper bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
 - `String? installId` - Installation identifier (Android only)
+- `List<String>? activeParentalControls` - Parental controls active on the user's account, as raw Apple identifiers such as `communicationLimits` (iOS only)
+- `DateTime? mostRecentApprovalDate` - When a guardian most recently approved the age range (Android only, supervised users)
 
 #### When are ageLower and ageUpper populated?
 
@@ -399,6 +446,14 @@ Enum representing the source of age declaration (iOS only):
 
 - `selfDeclared` - Age was self-declared by the user
 - `guardianDeclared` - Age was declared by a guardian
+
+### AgeRegulatoryFeature
+
+Enum of regulatory actions Apple can require (iOS 26.4+, returned by `getRequiredRegulatoryFeatures()`):
+
+- `declaredAgeRangeRequired` - The user must share their age range with your app
+- `significantAppChangeRequiresAdultNotification` - Adult users must acknowledge your significant app change (use `showSignificantUpdateAcknowledgment`)
+- `significantAppChangeRequiresParentalConsent` - A parent must consent before a child continues after a significant change (the consent flow itself runs through Apple's PermissionKit and App Store Server Notifications, which this plugin does not wrap)
 
 ### Exceptions
 
@@ -589,6 +644,8 @@ The plugin calls Apple's `requestAgeRange()` directly and does **not** pre-gate 
 
 As a result, **iOS no longer returns `AgeSignalsStatus.unknown` from an eligibility pre-check** (as of 0.6.0). Region applicability is reflected by `requestAgeRange()` itself.
 
+On iOS 26.4+, `getRequiredRegulatoryFeatures()` is the reliable way to check what Apple requires for the current user before prompting; it answers a more precise question than the old eligibility flag ever did.
+
 **Behavior:**
 - **iOS 26.0+**: Calls `requestAgeRange()` directly
 - **iOS < 26.0**: Throws `UnsupportedPlatformException`
@@ -628,12 +685,19 @@ try {
 
 **MissingEntitlementException (iOS)**
 - The `com.apple.developer.declared-age-range` entitlement isn't present in the signed app at runtime
-- Most common cause: the key is in `Runner.entitlements` but the **capability isn't registered on your App ID**, so Xcode silently strips it at signing
+- Common causes: the key is in `Runner.entitlements` but the **capability isn't registered on your App ID** (Xcode falls back to a wildcard profile without it), or the entitlements file exists but the project has no `CODE_SIGN_ENTITLEMENTS` build setting pointing at it, so it never enters the signature at all
 - **Solution**:
     1. Add the key to `Runner.entitlements` (see iOS Setup)
-    2. Enable the **Declared Age Range** capability on your App ID via Xcode → Signing & Capabilities → **+ Capability** (self-serve; no Apple approval needed)
-    3. Let Xcode regenerate the provisioning profile (toggle the team or hit "Try Again" under Signing if needed)
-    4. Verify with `codesign -d --entitlements :- YourApp.app | grep declared-age-range`
+    2. Make sure the Runner target's `CODE_SIGN_ENTITLEMENTS` build setting references that file (adding the capability via Xcode's Signing & Capabilities tab does this for you)
+    3. Enable the **Declared Age Range** capability on your App ID via Xcode → Signing & Capabilities → **+ Capability** (self-serve; no Apple approval needed)
+    4. Let Xcode regenerate the provisioning profile (toggle the team or hit "Try Again" under Signing if needed)
+    5. Verify with `codesign -d --entitlements :- YourApp.app | grep declared-age-range`
+- Since 0.7.0, "age range sharing not available for this user or region" is reported as `ApiNotAvailableException`; earlier versions misreported that state as `MissingEntitlementException` even on correctly entitled apps
+
+**ApiErrorException: "requiredRegulatoryFeatures failed: Timed out after 10.0s" (iOS)**
+- Apple's regulatory features call can hang instead of returning; the plugin's 10-second deadline converts the hang into this error
+- Observed on a real iOS 26.5 device in **debug** builds even with the correct entitlement and a covered-region sandbox account, while the identical app in **release** mode answered in about 140 ms
+- **Solution**: treat it as transient; test regulatory features on release (or TestFlight) builds
 
 **UserCancelledException**
 - User cancelled the age verification prompt

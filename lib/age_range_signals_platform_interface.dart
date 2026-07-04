@@ -1,6 +1,8 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'age_range_signals_method_channel.dart';
+import 'src/exceptions/age_signals_exception.dart';
+import 'src/models/age_regulatory_feature.dart';
 import 'src/models/age_signals_result.dart';
 import 'src/models/age_signals_mock_data.dart';
 
@@ -54,5 +56,28 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// Throws [AgeSignalsException] if an error occurs during the check.
   Future<AgeSignalsResult> checkAgeSignals() {
     throw UnimplementedError('checkAgeSignals() has not been implemented.');
+  }
+
+  /// Returns the regulatory features Apple reports as required for the
+  /// current user (iOS 26.4+).
+  ///
+  /// Returns an empty set on Android. Throws [UnsupportedPlatformException]
+  /// on iOS below 26.4 and in apps built with a pre-26.4 SDK.
+  Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
+    throw UnimplementedError(
+      'getRequiredRegulatoryFeatures() has not been implemented.',
+    );
+  }
+
+  /// Shows Apple's system acknowledgment sheet for a significant app update
+  /// (iOS 26.4+).
+  ///
+  /// Throws [UnsupportedPlatformException] on Android and on iOS below 26.4.
+  Future<void> showSignificantUpdateAcknowledgment({
+    required String updateDescription,
+  }) {
+    throw UnimplementedError(
+      'showSignificantUpdateAcknowledgment() has not been implemented.',
+    );
   }
 }

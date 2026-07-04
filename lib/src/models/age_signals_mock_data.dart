@@ -29,6 +29,7 @@ class AgeSignalsMockData {
     this.ageUpper,
     this.source,
     this.installId,
+    this.mostRecentApprovalDate,
   });
 
   /// The mock verification status to return.
@@ -56,6 +57,12 @@ class AgeSignalsMockData {
   /// Only used when testing Android scenarios.
   final String? installId;
 
+  /// Mock guardian approval date (Android only).
+  ///
+  /// Maps to the `mostRecentApprovalDate` reported by the Play Age Signals
+  /// API for supervised users.
+  final DateTime? mostRecentApprovalDate;
+
   /// Converts this mock data to a map for platform channel.
   Map<String, dynamic> toMap() {
     return {
@@ -64,6 +71,7 @@ class AgeSignalsMockData {
       'ageUpper': ageUpper,
       'source': source?.name,
       'installId': installId,
+      'mostRecentApprovalDate': mostRecentApprovalDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -74,6 +82,7 @@ class AgeSignalsMockData {
     int? ageUpper,
     AgeDeclarationSource? source,
     String? installId,
+    DateTime? mostRecentApprovalDate,
   }) {
     return AgeSignalsMockData(
       status: status ?? this.status,
@@ -81,13 +90,16 @@ class AgeSignalsMockData {
       ageUpper: ageUpper ?? this.ageUpper,
       source: source ?? this.source,
       installId: installId ?? this.installId,
+      mostRecentApprovalDate:
+          mostRecentApprovalDate ?? this.mostRecentApprovalDate,
     );
   }
 
   @override
   String toString() {
     return 'AgeSignalsMockData(status: $status, ageLower: $ageLower, '
-        'ageUpper: $ageUpper, source: $source, installId: $installId)';
+        'ageUpper: $ageUpper, source: $source, installId: $installId, '
+        'mostRecentApprovalDate: $mostRecentApprovalDate)';
   }
 
   @override
@@ -99,11 +111,20 @@ class AgeSignalsMockData {
         other.ageLower == ageLower &&
         other.ageUpper == ageUpper &&
         other.source == source &&
-        other.installId == installId;
+        other.installId == installId &&
+        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
+            mostRecentApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
   int get hashCode {
-    return Object.hash(status, ageLower, ageUpper, source, installId);
+    return Object.hash(
+      status,
+      ageLower,
+      ageUpper,
+      source,
+      installId,
+      mostRecentApprovalDate?.millisecondsSinceEpoch,
+    );
   }
 }

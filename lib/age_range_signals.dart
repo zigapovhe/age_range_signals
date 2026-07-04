@@ -1,10 +1,13 @@
 import 'age_range_signals_platform_interface.dart';
+import 'src/exceptions/age_signals_exception.dart';
+import 'src/models/age_regulatory_feature.dart';
 import 'src/models/age_signals_result.dart';
 import 'src/models/age_signals_mock_data.dart';
 
 export 'src/models/age_signals_result.dart';
 export 'src/models/age_signals_mock_data.dart';
 export 'src/exceptions/age_signals_exception.dart';
+export 'src/models/age_regulatory_feature.dart';
 
 /// Flutter plugin for age verification.
 ///
@@ -50,6 +53,9 @@ class AgeRangeSignals {
   /// On iOS, [ageGates] specifies the age thresholds to use for age verification.
   /// For example, `[13, 16, 18]` will allow the app to determine if the user is
   /// under 13, between 13-15, between 16-17, or 18+.
+  /// Apple requires 1 to 3 gates and at least 2 years between consecutive
+  /// gates (`[13, 14]` is rejected by the OS with an invalid-request error;
+  /// `[13, 16, 18]` is fine).
   ///
   /// **Testing with Mock Data (Android only)**
   ///
@@ -104,5 +110,64 @@ class AgeRangeSignals {
   /// Throws [AgeSignalsException] if an error occurs during the check.
   Future<AgeSignalsResult> checkAgeSignals() {
     return AgeRangeSignalsPlatform.instance.checkAgeSignals();
+  }
+
+  /// Returns the regulatory features Apple reports as required for the
+  /// current user, based on their region and account settings (iOS 26.4+).
+  ///
+  /// Use this to decide whether you need to prompt at all: an empty set
+  /// means Apple affirmatively reports that no regulatory action is
+  /// required for this user. If the set does not contain
+  /// [AgeRegulatoryFeature.declaredAgeRangeRequired], Apple imposes no
+  /// obligation to request this user's age range.
+  ///
+  /// Returns an empty set on Android: the Play Age Signals API has no
+  /// equivalent concept and implicitly limits itself to regions where it
+  /// is legally required, so "nothing to report" is the true answer there.
+  ///
+  /// Throws [UnsupportedPlatformException] on iOS below 26.4 and in apps
+  /// built with an SDK older than iOS 26.4 (Xcode < 26.4), where the
+  /// requirement cannot be checked. This keeps the empty set unambiguous;
+  /// keep your own regional logic for those devices. Throws other
+  /// [AgeSignalsException] subclasses on API errors.
+  Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
+    return AgeRangeSignalsPlatform.instance.getRequiredRegulatoryFeatures();
+  }
+
+  /// Shows Apple's system acknowledgment sheet for a significant app update
+  /// (iOS 26.4+).
+  ///
+  /// Call this when [getRequiredRegulatoryFeatures] contains
+  /// [AgeRegulatoryFeature.significantAppChangeRequiresAdultNotification]
+  /// and you shipped a change that regulators consider significant.
+  /// [updateDescription] is shown to the user inside the system sheet.
+  ///
+  /// Completing normally means the person acknowledged the sheet. Every
+  /// other outcome is an exception:
+  ///
+  /// * [ArgumentError] if [updateDescription] is empty.
+  /// * [UnsupportedPlatformException] on Android and on iOS below 26.4.
+  ///   This is deliberate: silently succeeding would let an app believe it
+  ///   satisfied a notification duty when no sheet was ever shown.
+  /// * [ApiNotAvailableException] when Apple reports the acknowledgment is
+  ///   not available. Apple uses the same error when the person dismisses
+  ///   the sheet, so do not treat this as proof the sheet never appeared.
+  /// * [UserCancelledException] when the system reports an explicit
+  ///   cancellation.
+  /// * [ApiErrorException] for other API failures, including when no window
+  ///   scene is available to present on.
+  Future<void> showSignificantUpdateAcknowledgment({
+    required String updateDescription,
+  }) {
+    if (updateDescription.trim().isEmpty) {
+      throw ArgumentError.value(
+        updateDescription,
+        'updateDescription',
+        'must not be empty; it is shown to the user inside the system sheet',
+      );
+    }
+    return AgeRangeSignalsPlatform.instance.showSignificantUpdateAcknowledgment(
+      updateDescription: updateDescription,
+    );
   }
 }

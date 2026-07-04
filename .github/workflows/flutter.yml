@@ -30,6 +30,22 @@ jobs:
       - name: Run tests
         run: flutter test
 
+  ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      - name: Set up latest Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: example
+      - name: Build example iOS app (compile guards, no signing)
+        run: flutter build ios --debug --no-codesign
+        working-directory: example
+
   android:
     runs-on: ubuntu-latest
 

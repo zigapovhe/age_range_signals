@@ -1,3 +1,14 @@
+## 0.7.0
+
+* **iOS**: Added `getRequiredRegulatoryFeatures()` (iOS 26.4+), which reports whether Apple requires the current user to share an age range and whether significant-change notification or parental consent applies (#31). Calls are guarded by a 10-second deadline. Throws `UnsupportedPlatformException` below iOS 26.4 (and in apps built with an SDK older than iOS 26.4) so an empty set always means Apple affirmatively reports nothing is required; on Android the set is always empty.
+* **iOS**: Added `showSignificantUpdateAcknowledgment(updateDescription:)`, the system sheet for significant app changes (iOS 26.4+). Throws `UnsupportedPlatformException` where unavailable instead of silently succeeding.
+* **iOS**: `AgeSignalsResult` now includes `activeParentalControls`.
+* **Android**: `AgeSignalsResult` now includes `mostRecentApprovalDate`; mockable via `AgeSignalsMockData`.
+* **iOS**: `checkAgeSignals()` now reports `ApiNotAvailableException` when Apple says age range sharing is unavailable for the user or region. Earlier versions misreported that state as `MissingEntitlementException` even on correctly entitled apps.
+* **iOS**: `PRESENTATION_CONTEXT_UNAVAILABLE` errors now surface as `ApiErrorException` instead of the base `AgeSignalsException`.
+* **Docs**: Documented Apple's rule that age gates must be at least 2 years apart.
+* **Example**: The iOS example now wires `Runner.entitlements` into signing via `CODE_SIGN_ENTITLEMENTS` (it was previously never applied) and adds buttons for the regulatory features API.
+
 ## 0.6.2
 
 * **Android**: Fixed the Gradle build on hosts not using AGP 9 built-in Kotlin. The Kotlin plugin is now applied only when the host needs it (AGP <9, or `android.builtInKotlin=false`), so the plugin works with AGP 9 built-in Kotlin as well as AGP 8.x + KGP 2.0+. No changes required in consuming apps.

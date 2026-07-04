@@ -13,6 +13,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import java.util.Date
 
 class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
@@ -99,7 +100,38 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             resultBuilder.setInstallId(installId)
         }
 
+        (mockDataMap?.get("mostRecentApprovalDate") as? Number)?.let {
+            resultBuilder.setMostRecentApprovalDate(Date(it.toLong()))
+        }
+
         return resultBuilder.build()
+    }
+
+    /**
+     * Maps a platform [AgeSignalsResult] to the channel map consumed by Dart.
+     * Shared by the real and fake manager listeners so the two paths cannot
+     * drift apart. iOS-only keys are present but always null on Android.
+     */
+    internal fun resultToMap(ageSignalsResult: AgeSignalsResult): Map<String, Any?> {
+        val status = when (ageSignalsResult.userStatus()) {
+            AgeSignalsVerificationStatus.VERIFIED -> "verified"
+            AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
+            AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
+            AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
+            AgeSignalsVerificationStatus.DECLARED -> "declared"
+            AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
+            else -> "unknown"
+        }
+
+        return mapOf(
+            "status" to status,
+            "installId" to ageSignalsResult.installId(),
+            "ageLower" to ageSignalsResult.ageLower(),
+            "ageUpper" to ageSignalsResult.ageUpper(),
+            "source" to null,
+            "activeParentalControls" to null,
+            "mostRecentApprovalDate" to ageSignalsResult.mostRecentApprovalDate()?.time
+        )
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -113,6 +145,19 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             }
             "checkAgeSignals" -> {
                 checkAgeSignals(result)
+            }
+            "getRequiredRegulatoryFeatures" -> {
+                // Apple-only concept. Play Age Signals has no regulatory
+                // feature flags; it limits itself to covered regions
+                // implicitly, so there is never anything to report here.
+                result.success(emptyList<String>())
+            }
+            "showSignificantUpdateAcknowledgment" -> {
+                result.error(
+                    "UNSUPPORTED_PLATFORM",
+                    "Significant update acknowledgment is an iOS 26.4+ system sheet; Android has no equivalent",
+                    null
+                )
             }
             else -> {
                 result.notImplemented()
@@ -130,25 +175,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
 
             fakeManager.checkAgeSignals(request)
                 .addOnSuccessListener { fakeResult ->
-                    val status = when (fakeResult.userStatus()) {
-                        AgeSignalsVerificationStatus.VERIFIED -> "verified"
-                        AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
-                        AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
-                        AgeSignalsVerificationStatus.DECLARED -> "declared"
-                        AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
-                        else -> "unknown"
-                    }
-
-                    val resultMap = mapOf(
-                        "status" to status,
-                        "installId" to fakeResult.installId(),
-                        "ageLower" to fakeResult.ageLower(),
-                        "ageUpper" to fakeResult.ageUpper(),
-                        "source" to null
-                    )
-
-                    result.success(resultMap)
+                    result.success(resultToMap(fakeResult))
                 }
                 .addOnFailureListener { fakeException ->
                     result.error(
@@ -175,25 +202,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
 
         manager.checkAgeSignals(request)
             .addOnSuccessListener { ageSignalsResult ->
-                val status = when (ageSignalsResult.userStatus()) {
-                    AgeSignalsVerificationStatus.VERIFIED -> "verified"
-                    AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
-                    AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
-                    AgeSignalsVerificationStatus.DECLARED -> "declared"
-                    AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
-                    else -> "unknown"
-                }
-
-                val resultMap = mapOf(
-                    "status" to status,
-                    "installId" to ageSignalsResult.installId(),
-                    "ageLower" to ageSignalsResult.ageLower(),
-                    "ageUpper" to ageSignalsResult.ageUpper(),
-                    "source" to null
-                )
-
-                result.success(resultMap)
+                result.success(resultToMap(ageSignalsResult))
             }
             .addOnFailureListener { exception ->
                 val errorMessage = exception.message ?: "An error occurred while checking age signals"

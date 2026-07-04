@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'age_range_signals_platform_interface.dart';
 import 'src/exceptions/age_signals_exception.dart';
+import 'src/models/age_regulatory_feature.dart';
 import 'src/models/age_signals_mock_data.dart';
 import 'src/models/age_signals_result.dart';
 
@@ -42,6 +43,38 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
     }
   }
 
+  @override
+  Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() async {
+    try {
+      final raw = await methodChannel.invokeListMethod<String>(
+        'getRequiredRegulatoryFeatures',
+      );
+      if (raw == null) {
+        return const {};
+      }
+      return raw
+          .map(AgeRegulatoryFeature.fromName)
+          .whereType<AgeRegulatoryFeature>()
+          .toSet();
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
+  @override
+  Future<void> showSignificantUpdateAcknowledgment({
+    required String updateDescription,
+  }) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'showSignificantUpdateAcknowledgment',
+        {'updateDescription': updateDescription},
+      );
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
   AgeSignalsException _handlePlatformException(PlatformException e) {
     final details = e.details?.toString();
 
@@ -61,6 +94,12 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
       case 'NOT_INITIALIZED':
         return NotInitializedException(
           e.message ?? 'Plugin not initialized. Call initialize() first.',
+          e.code,
+          details,
+        );
+      case 'PRESENTATION_CONTEXT_UNAVAILABLE':
+        return ApiErrorException(
+          e.message ?? 'No view controller or window scene available',
           e.code,
           details,
         );
