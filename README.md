@@ -292,11 +292,15 @@ Main class for interacting with the plugin.
 #### Methods
 
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
-  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`).
+  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
   - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
   - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user.
+
+- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). Empty set on Android and on iOS below 26.4. If `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Requires building with the iOS 26.4 SDK (Xcode 26.4+); on older SDKs it also returns an empty set.
+
+- `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Throws `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op.
 
 ### AgeSignalsMockData
 
@@ -311,6 +315,7 @@ AgeSignalsMockData({
   int? ageUpper,
   AgeDeclarationSource? source,
   String? installId,
+  DateTime? mostRecentApprovalDate,
 })
 ```
 
@@ -321,6 +326,7 @@ AgeSignalsMockData({
 - `int? ageUpper` - Mock upper bound of age range (for supervised statuses)
 - `AgeDeclarationSource? source` - Reserved for future use (currently unused)
 - `String? installId` - Mock installation ID (Android only)
+- `DateTime? mostRecentApprovalDate` - Mock guardian approval date (Android only)
 
 #### Example (Android only)
 
@@ -349,6 +355,8 @@ Result object containing age verification information.
 - `int? ageUpper` - Upper bound of age range (both platforms; iOS: when user consents, Android: for supervised users)
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
 - `String? installId` - Installation identifier (Android only)
+- `List<String>? activeParentalControls` - Parental controls active on the user's account, as raw Apple identifiers such as `communicationLimits` (iOS only)
+- `DateTime? mostRecentApprovalDate` - When a guardian most recently approved the age range (Android only, supervised users)
 
 #### When are ageLower and ageUpper populated?
 
@@ -399,6 +407,14 @@ Enum representing the source of age declaration (iOS only):
 
 - `selfDeclared` - Age was self-declared by the user
 - `guardianDeclared` - Age was declared by a guardian
+
+### AgeRegulatoryFeature
+
+Enum of regulatory actions Apple can require (iOS 26.4+, returned by `getRequiredRegulatoryFeatures()`):
+
+- `declaredAgeRangeRequired` - The user must share their age range with your app
+- `significantAppChangeRequiresAdultNotification` - Adult users must acknowledge your significant app change (use `showSignificantUpdateAcknowledgment`)
+- `significantAppChangeRequiresParentalConsent` - A parent must consent before a child continues after a significant change (the consent flow itself runs through Apple's PermissionKit and App Store Server Notifications, which this plugin does not wrap)
 
 ### Exceptions
 
