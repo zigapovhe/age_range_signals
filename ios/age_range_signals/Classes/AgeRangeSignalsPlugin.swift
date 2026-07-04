@@ -311,7 +311,20 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                 return isFirst
             }
 
-            let timeoutTask = Mutex<Task<Void, Never>?>(nil)
+            // The sleeper starts first so the operation can always cancel it
+            // the moment it wins, instead of letting it hold the continuation
+            // machinery for the full deadline.
+            let operationTaskBox = Mutex<Task<Void, Never>?>(nil)
+            let timeoutTask = Task {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                let timeout = NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
+                    NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
+                ])
+                if resumeOnce(with: .failure(timeout)) {
+                    operationTaskBox.withLock { $0?.cancel() }
+                }
+            }
             let operationTask = Task {
                 let outcome: Result<T, any Error>
                 do {
@@ -320,23 +333,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     outcome = .failure(error)
                 }
                 if resumeOnce(with: outcome) {
-                    // Free the sleeper right away instead of letting it hold
-                    // the continuation machinery for the full deadline.
-                    timeoutTask.withLock { $0?.cancel() }
+                    timeoutTask.cancel()
                 }
             }
-            timeoutTask.withLock { task in
-                task = Task {
-                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                    guard !Task.isCancelled else { return }
-                    let timeout = NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
-                        NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
-                    ])
-                    if resumeOnce(with: .failure(timeout)) {
-                        operationTask.cancel()
-                    }
-                }
-            }
+            operationTaskBox.withLock { $0 = operationTask }
         }
     }
     #endif

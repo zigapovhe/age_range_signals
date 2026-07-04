@@ -142,12 +142,30 @@ class AgeRangeSignals {
   /// and you shipped a change that regulators consider significant.
   /// [updateDescription] is shown to the user inside the system sheet.
   ///
-  /// Throws [UnsupportedPlatformException] on Android and on iOS below
-  /// 26.4. This is deliberate: silently succeeding would let an app believe
-  /// it satisfied a notification duty when no sheet was ever shown.
+  /// Completing normally means the person acknowledged the sheet. Every
+  /// other outcome is an exception:
+  ///
+  /// * [ArgumentError] if [updateDescription] is empty.
+  /// * [UnsupportedPlatformException] on Android and on iOS below 26.4.
+  ///   This is deliberate: silently succeeding would let an app believe it
+  ///   satisfied a notification duty when no sheet was ever shown.
+  /// * [ApiNotAvailableException] when Apple reports the acknowledgment is
+  ///   not available. Apple uses the same error when the person dismisses
+  ///   the sheet, so do not treat this as proof the sheet never appeared.
+  /// * [UserCancelledException] when the system reports an explicit
+  ///   cancellation.
+  /// * [ApiErrorException] for other API failures, including when no window
+  ///   scene is available to present on.
   Future<void> showSignificantUpdateAcknowledgment({
     required String updateDescription,
   }) {
+    if (updateDescription.trim().isEmpty) {
+      throw ArgumentError.value(
+        updateDescription,
+        'updateDescription',
+        'must not be empty; it is shown to the user inside the system sheet',
+      );
+    }
     return AgeRangeSignalsPlatform.instance.showSignificantUpdateAcknowledgment(
       updateDescription: updateDescription,
     );

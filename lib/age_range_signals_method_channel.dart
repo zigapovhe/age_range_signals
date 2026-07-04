@@ -97,6 +97,12 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
           e.code,
           details,
         );
+      case 'PRESENTATION_CONTEXT_UNAVAILABLE':
+        return ApiErrorException(
+          e.message ?? 'No view controller or window scene available',
+          e.code,
+          details,
+        );
       case 'MISSING_ENTITLEMENT':
         return MissingEntitlementException(
           e.message ?? 'Required entitlement is missing or not approved',

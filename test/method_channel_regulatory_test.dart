@@ -60,6 +60,28 @@ void main() {
         throwsA(isA<UnsupportedPlatformException>()),
       );
     });
+
+    test('maps API_NOT_AVAILABLE and API_ERROR to typed exceptions', () async {
+      setHandler(
+        (call) => throw PlatformException(
+          code: 'API_NOT_AVAILABLE',
+          message: 'service unavailable',
+        ),
+      );
+      expect(
+        () => platform.getRequiredRegulatoryFeatures(),
+        throwsA(isA<ApiNotAvailableException>()),
+      );
+
+      setHandler(
+        (call) =>
+            throw PlatformException(code: 'API_ERROR', message: 'timed out'),
+      );
+      expect(
+        () => platform.getRequiredRegulatoryFeatures(),
+        throwsA(isA<ApiErrorException>()),
+      );
+    });
   });
 
   group('showSignificantUpdateAcknowledgment', () {
@@ -89,6 +111,47 @@ void main() {
           updateDescription: 'x',
         ),
         throwsA(isA<UnsupportedPlatformException>()),
+      );
+    });
+
+    test('maps dismissal, cancellation, and presentation errors', () async {
+      setHandler(
+        (call) => throw PlatformException(
+          code: 'API_NOT_AVAILABLE',
+          message: 'unavailable or dismissed',
+        ),
+      );
+      expect(
+        () => platform.showSignificantUpdateAcknowledgment(
+          updateDescription: 'x',
+        ),
+        throwsA(isA<ApiNotAvailableException>()),
+      );
+
+      setHandler(
+        (call) => throw PlatformException(
+          code: 'USER_CANCELLED',
+          message: 'cancelled',
+        ),
+      );
+      expect(
+        () => platform.showSignificantUpdateAcknowledgment(
+          updateDescription: 'x',
+        ),
+        throwsA(isA<UserCancelledException>()),
+      );
+
+      setHandler(
+        (call) => throw PlatformException(
+          code: 'PRESENTATION_CONTEXT_UNAVAILABLE',
+          message: 'no scene',
+        ),
+      );
+      expect(
+        () => platform.showSignificantUpdateAcknowledgment(
+          updateDescription: 'x',
+        ),
+        throwsA(isA<ApiErrorException>()),
       );
     });
   });

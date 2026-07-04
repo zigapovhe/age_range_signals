@@ -43,4 +43,18 @@ void main() {
       expect(fake.lastUpdateDescription, 'New chat');
     },
   );
+
+  test('showSignificantUpdateAcknowledgment rejects an empty description '
+      'before reaching the platform', () async {
+    final fake = _FakePlatform();
+    AgeRangeSignalsPlatform.instance = fake;
+
+    expect(
+      () => AgeRangeSignals.instance.showSignificantUpdateAcknowledgment(
+        updateDescription: '   ',
+      ),
+      throwsArgumentError,
+    );
+    expect(fake.lastUpdateDescription, isNull);
+  });
 }

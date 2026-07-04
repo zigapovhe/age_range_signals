@@ -339,7 +339,7 @@ Main class for interacting with the plugin.
 
 - `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means Apple affirmatively reports nothing is required; if `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
 
-- `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Throws `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op.
+- `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Completing normally means the person acknowledged; every other outcome throws. `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op. `ApiNotAvailableException` when Apple reports the sheet unavailable, which Apple also uses when the person dismisses it, so don't treat that as proof the sheet never appeared. `UserCancelledException` on explicit cancellation and `ApiErrorException` for other failures.
 
 ### AgeSignalsMockData
 

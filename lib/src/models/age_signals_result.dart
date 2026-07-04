@@ -135,7 +135,9 @@ class AgeSignalsResult {
       }
     }
 
-    final controls = (map['activeParentalControls'] as List?)?.cast<String>();
+    final controls = (map['activeParentalControls'] as List?)
+        ?.map((e) => e as String)
+        .toList();
 
     final approvalMillis = map['mostRecentApprovalDate'] as int?;
     final approvalDate = approvalMillis == null

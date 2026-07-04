@@ -4,6 +4,7 @@
 * **iOS**: Added `showSignificantUpdateAcknowledgment(updateDescription:)`, the system sheet for significant app changes (iOS 26.4+). Throws `UnsupportedPlatformException` where unavailable instead of silently succeeding.
 * **iOS**: `AgeSignalsResult` now includes `activeParentalControls`.
 * **iOS**: `checkAgeSignals()` now reports `ApiNotAvailableException` when Apple says age range sharing is unavailable for the user or region. Earlier versions misreported that state as `MissingEntitlementException` even on correctly entitled apps.
+* **iOS**: `PRESENTATION_CONTEXT_UNAVAILABLE` errors now surface as `ApiErrorException` instead of the base `AgeSignalsException`.
 * **Example**: The iOS example now wires `Runner.entitlements` into signing via `CODE_SIGN_ENTITLEMENTS` (it was previously never applied) and adds buttons for the regulatory features API.
 * **Android**: `AgeSignalsResult` now includes `mostRecentApprovalDate`; mockable via `AgeSignalsMockData`.
 * **Docs**: Documented Apple's rule that age gates must be at least 2 years apart.
