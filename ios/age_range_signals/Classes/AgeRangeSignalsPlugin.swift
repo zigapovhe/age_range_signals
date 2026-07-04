@@ -1,6 +1,9 @@
 import Flutter
-import Synchronization
 import UIKit
+
+#if canImport(Synchronization)
+import Synchronization
+#endif
 
 #if canImport(DeclaredAgeRange)
 import DeclaredAgeRange
@@ -120,15 +123,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
                 switch response {
                 case .declinedSharing:
-                    result([
-                        "status": "declined",
-                        "ageLower": NSNull(),
-                        "ageUpper": NSNull(),
-                        "source": NSNull(),
-                        "installId": NSNull(),
-                        "activeParentalControls": NSNull(),
-                        "mostRecentApprovalDate": NSNull()
-                    ])
+                    result(self.ageRangeResultMap(status: "declined"))
 
                 case .sharing(let range):
                     let source: String?
@@ -151,16 +146,13 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
                     let parentalControls = self.parentalControlNames(range.activeParentalControls)
 
-                    result([
-                        "status": status,
-                        "ageLower": range.lowerBound as Any? ?? NSNull(),
-                        "ageUpper": range.upperBound as Any? ?? NSNull(),
-                        "source": source as Any? ?? NSNull(),
-                        "installId": NSNull(),
-                        "activeParentalControls": parentalControls.isEmpty
-                            ? NSNull() : parentalControls,
-                        "mostRecentApprovalDate": NSNull()
-                    ])
+                    result(self.ageRangeResultMap(
+                        status: status,
+                        ageLower: range.lowerBound,
+                        ageUpper: range.upperBound,
+                        source: source,
+                        activeParentalControls: parentalControls.isEmpty ? nil : parentalControls
+                    ))
 
                 @unknown default:
                     result(FlutterError(
@@ -234,36 +226,57 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         #endif
     }
 
+    /// Builds the channel map for a checkAgeSignals response. Single place
+    /// that owns the map shape, so the response variants cannot drift apart
+    /// (Android has the same guarantee via resultToMap). Android-only keys
+    /// are present but always NSNull on iOS.
+    private func ageRangeResultMap(
+        status: String,
+        ageLower: Int? = nil,
+        ageUpper: Int? = nil,
+        source: String? = nil,
+        activeParentalControls: [String]? = nil
+    ) -> [String: Any] {
+        return [
+            "status": status,
+            "ageLower": ageLower as Any? ?? NSNull(),
+            "ageUpper": ageUpper as Any? ?? NSNull(),
+            "source": source as Any? ?? NSNull(),
+            "installId": NSNull(),
+            "activeParentalControls": activeParentalControls as Any? ?? NSNull(),
+            "mostRecentApprovalDate": NSNull()
+        ]
+    }
+
     #if canImport(DeclaredAgeRange)
     /// Translates Apple's ParentalControls option set into stable string
-    /// identifiers for the channel. Flags this build does not know about are
-    /// passed through via their description so they are not silently dropped.
+    /// identifiers for the channel. Flags this plugin version does not know
+    /// are omitted; an OptionSet has no stable name for unknown bits, so
+    /// passing them through would leak an unstable debug description.
     @available(iOS 26.0, *)
     private func parentalControlNames(_ controls: AgeRangeService.ParentalControls) -> [String] {
         var names: [String] = []
-        var known: AgeRangeService.ParentalControls = [.communicationLimits]
         if controls.contains(.communicationLimits) {
             names.append("communicationLimits")
         }
-        #if compiler(>=6.3)
-        // Deprecated in the 26.4 SDK in favor of requiredRegulatoryFeatures,
-        // but still the only source of this signal on iOS 26.2 and 26.3
-        // devices, so we keep reporting it.
+        // The flag exists from the iOS 26.2 SDK; Xcode 26.2 is the first to
+        // ship Swift 6.2.3, so this guard compiles it in on Xcode 26.2+ and
+        // out on 26.0/26.1 whose SDKs lack the symbol. Deprecated in the
+        // 26.4 SDK in favor of requiredRegulatoryFeatures, but still the
+        // only source of this signal on iOS 26.2 and 26.3 devices, so we
+        // keep reporting it.
+        #if compiler(>=6.2.3)
         if #available(iOS 26.2, *) {
-            known.insert(.significantAppChangeApprovalRequired)
             if controls.contains(.significantAppChangeApprovalRequired) {
                 names.append("significantAppChangeApprovalRequired")
             }
         }
         #endif
-        let unknown = controls.subtracting(known)
-        if !unknown.isEmpty {
-            names.append(unknown.description)
-        }
         return names
     }
     #endif
 
+    #if canImport(Synchronization)
     /// Races an async operation against a deadline. Apple's age-assurance
     /// properties have a history of hanging (isEligibleForAgeFeatures on
     /// 26.2, Apple forums threads 807906 & 809829), so every non-UI call we
@@ -281,34 +294,47 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     ) async throws -> T {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, any Error>) in
             let resumed = Mutex(false)
-            @Sendable func resumeOnce(_ resume: () -> Void) {
+            // Resumes the continuation at most once; the signature guarantees
+            // every winner resumes, so the continuation cannot leak.
+            @Sendable func resumeOnce(with result: Result<T, any Error>) -> Bool {
                 let isFirst = resumed.withLock { alreadyResumed -> Bool in
                     if alreadyResumed { return false }
                     alreadyResumed = true
                     return true
                 }
-                if isFirst { resume() }
+                if isFirst { continuation.resume(with: result) }
+                return isFirst
             }
 
+            let timeoutTask = Mutex<Task<Void, Never>?>(nil)
             let operationTask = Task {
+                let outcome: Result<T, any Error>
                 do {
-                    let value = try await operation()
-                    resumeOnce { continuation.resume(returning: value) }
+                    outcome = .success(try await operation())
                 } catch {
-                    resumeOnce { continuation.resume(throwing: error) }
+                    outcome = .failure(error)
+                }
+                if resumeOnce(with: outcome) {
+                    // Free the sleeper right away instead of letting it hold
+                    // the continuation machinery for the full deadline.
+                    timeoutTask.withLock { $0?.cancel() }
                 }
             }
-            Task {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                resumeOnce {
-                    operationTask.cancel()
-                    continuation.resume(throwing: NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
+            timeoutTask.withLock { task in
+                task = Task {
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    guard !Task.isCancelled else { return }
+                    let timeout = NSError(domain: "AgeRangeSignals", code: -2, userInfo: [
                         NSLocalizedDescriptionKey: "Timed out after \(seconds)s"
-                    ]))
+                    ])
+                    if resumeOnce(with: .failure(timeout)) {
+                        operationTask.cancel()
+                    }
                 }
             }
         }
     }
+    #endif
 
     private func handleGetRequiredRegulatoryFeatures(result: @escaping FlutterResult) {
         #if canImport(DeclaredAgeRange) && compiler(>=6.3)
@@ -318,7 +344,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     let features = try await self.withDeadline(seconds: 10) {
                         try await AgeRangeService.shared.requiredRegulatoryFeatures
                     }
-                    let names: [String] = features.map { feature in
+                    let names: [String] = features.compactMap { feature in
                         switch feature {
                         case .declaredAgeRangeRequired:
                             return "declaredAgeRangeRequired"
@@ -327,7 +353,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         case .significantAppChangeRequiresParentalConsent:
                             return "significantAppChangeRequiresParentalConsent"
                         @unknown default:
-                            return String(describing: feature)
+                            // Dart maps these names onto a closed enum and
+                            // drops anything it does not know, so omitting
+                            // future cases here keeps the two layers agreed.
+                            return nil
                         }
                     }
                     result(names)
@@ -438,9 +467,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
     /// Finds a view controller suitable for presenting the age range prompt.
     private func presentationViewController() -> UIViewController? {
-        if let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive }),
+        if let scene = activeWindowScene(),
            let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
             var top = root
             while let presented = top.presentedViewController {

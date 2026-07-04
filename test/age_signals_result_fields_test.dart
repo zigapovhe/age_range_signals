@@ -56,6 +56,27 @@ void main() {
       expect(roundTripped, original);
     });
 
+    test('equality compares approval date instants across time zones', () {
+      final utc = AgeSignalsResult(
+        status: AgeSignalsStatus.supervised,
+        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+          1735689600000,
+          isUtc: true,
+        ),
+      );
+      final local = AgeSignalsResult(
+        status: AgeSignalsStatus.supervised,
+        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+          1735689600000,
+        ),
+      );
+
+      // A mock configured with a local DateTime must equal the UTC value
+      // parsed back from the channel; the instant matters, not the zone.
+      expect(utc, local);
+      expect(utc.hashCode, local.hashCode);
+    });
+
     test('equality and copyWith cover the new fields', () {
       const a = AgeSignalsResult(
         status: AgeSignalsStatus.supervised,

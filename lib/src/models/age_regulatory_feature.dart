@@ -32,12 +32,6 @@ enum AgeRegulatoryFeature {
   ///
   /// Returns null for names this version does not know, so future Apple
   /// additions degrade gracefully instead of crashing the parse.
-  static AgeRegulatoryFeature? fromName(String name) {
-    for (final value in AgeRegulatoryFeature.values) {
-      if (value.name == name) {
-        return value;
-      }
-    }
-    return null;
-  }
+  static AgeRegulatoryFeature? fromName(String name) =>
+      AgeRegulatoryFeature.values.asNameMap()[name];
 }

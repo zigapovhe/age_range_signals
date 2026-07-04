@@ -48,17 +48,19 @@ class AgeSignalsResult {
 
   /// Parental controls active on the user's account (iOS only).
   ///
-  /// Raw identifiers as reported by Apple's DeclaredAgeRange framework
-  /// (e.g. `communicationLimits`). Passed through as strings so new values
-  /// added by Apple survive without a plugin update. Null on Android and
+  /// Stable identifiers as reported by Apple's DeclaredAgeRange framework:
+  /// `communicationLimits` (iOS 26.0+) and
+  /// `significantAppChangeApprovalRequired` (iOS 26.2+). Controls this
+  /// plugin version does not recognize are omitted. Null on Android and
   /// when Apple reports none.
   final List<String>? activeParentalControls;
 
   /// When a guardian most recently approved the age range (Android only).
   ///
   /// Reported by the Play Age Signals API for supervised users. Useful for
-  /// deciding whether a cached signal is fresh enough. Null on iOS and when
-  /// Google does not report it.
+  /// deciding whether a cached signal is fresh enough. Values parsed from
+  /// the platform are UTC; equality compares the instant, not the time
+  /// zone. Null on iOS and when Google does not report it.
   final DateTime? mostRecentApprovalDate;
 
   /// Creates a copy of this result with the given fields replaced with new values.
@@ -103,7 +105,8 @@ class AgeSignalsResult {
         other.source == source &&
         other.installId == installId &&
         listEquals(other.activeParentalControls, activeParentalControls) &&
-        other.mostRecentApprovalDate == mostRecentApprovalDate;
+        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
+            mostRecentApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
@@ -115,7 +118,7 @@ class AgeSignalsResult {
       source,
       installId,
       Object.hashAll(activeParentalControls ?? const []),
-      mostRecentApprovalDate,
+      mostRecentApprovalDate?.millisecondsSinceEpoch,
     );
   }
 
@@ -132,15 +135,12 @@ class AgeSignalsResult {
       }
     }
 
-    final rawControls = map['activeParentalControls'];
-    final controls = rawControls is List
-        ? rawControls.map((e) => e.toString()).toList()
-        : null;
+    final controls = (map['activeParentalControls'] as List?)?.cast<String>();
 
-    final rawApproval = map['mostRecentApprovalDate'];
-    final approvalDate = rawApproval is int
-        ? DateTime.fromMillisecondsSinceEpoch(rawApproval, isUtc: true)
-        : null;
+    final approvalMillis = map['mostRecentApprovalDate'] as int?;
+    final approvalDate = approvalMillis == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(approvalMillis, isUtc: true);
 
     return AgeSignalsResult(
       status: AgeSignalsStatus.values.firstWhere(

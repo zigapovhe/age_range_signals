@@ -112,7 +112,8 @@ class AgeSignalsMockData {
         other.ageUpper == ageUpper &&
         other.source == source &&
         other.installId == installId &&
-        other.mostRecentApprovalDate == mostRecentApprovalDate;
+        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
+            mostRecentApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
@@ -123,7 +124,7 @@ class AgeSignalsMockData {
       ageUpper,
       source,
       installId,
-      mostRecentApprovalDate,
+      mostRecentApprovalDate?.millisecondsSinceEpoch,
     );
   }
 }

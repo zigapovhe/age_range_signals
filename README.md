@@ -14,6 +14,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - [Usage](#usage)
     - [Basic Example](#basic-example)
     - [Complete Example](#complete-example)
+    - [Regulatory Features (iOS 26.4+)](#regulatory-features-ios-264)
     - [18+ Only App](#18-only-app)
     - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
 - [API Reference](#api-reference)
@@ -22,6 +23,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
     - [AgeSignalsResult](#agesignalsresult)
     - [AgeSignalsStatus](#agesignalsstatus)
     - [AgeDeclarationSource](#agedeclarationsource)
+    - [AgeRegulatoryFeature](#ageregulatoryfeature)
     - [Exceptions](#exceptions)
 - [Legal Compliance](#legal-compliance)
     - [Important Usage Restrictions](#important-usage-restrictions)
@@ -46,6 +48,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - ✅ Cross-platform support for Android and iOS
 - ✅ Google Play Age Signals API integration for Android (API 23+)
 - ✅ Apple DeclaredAgeRange API integration for iOS (26.0+)
+- ✅ Regulatory feature detection and significant update acknowledgment for iOS (26.4+)
 - ✅ Swift Package Manager (SPM) support for iOS
 - ✅ Configurable age gates for iOS
 - ✅ Type-safe Dart API with structured error handling
@@ -238,6 +241,31 @@ Future<void> checkUserAge() async {
   }
 }
 ```
+
+### Regulatory Features (iOS 26.4+)
+
+On iOS 26.4+ you can ask Apple which regulatory actions apply to the current user before deciding whether to prompt at all:
+
+```dart
+final features =
+    await AgeRangeSignals.instance.getRequiredRegulatoryFeatures();
+
+if (features.contains(AgeRegulatoryFeature.declaredAgeRangeRequired)) {
+  // Apple requires this user to share an age range with your app.
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+  // ...
+}
+
+if (features
+    .contains(AgeRegulatoryFeature.significantAppChangeRequiresAdultNotification)) {
+  // You shipped a change regulators consider significant; show Apple's sheet.
+  await AgeRangeSignals.instance.showSignificantUpdateAcknowledgment(
+    updateDescription: 'We added social features and public profiles.',
+  );
+}
+```
+
+The set is empty on Android and on iOS below 26.4, so treat an empty set as "nothing reportable", not as proof that no law applies; keep your own regional logic for older OS versions.
 
 ### 18+ Only App
 
@@ -604,6 +632,8 @@ For app-level UI/flow testing during development, you can also bypass age verifi
 The plugin calls Apple's `requestAgeRange()` directly and does **not** pre-gate on `isEligibleForAgeFeatures`. Earlier versions (0.4.0-0.5.x) checked `isEligibleForAgeFeatures` first and returned `unknown` for users reported as outside an applicable region, but that property proved unreliable in the iOS 26.2.x window: it can hang indefinitely (which hung `checkAgeSignals()` entirely) and it reports `false` before the user has accepted any prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Following Apple's guidance, the plugin now treats `requestAgeRange()` as the source of truth.
 
 As a result, **iOS no longer returns `AgeSignalsStatus.unknown` from an eligibility pre-check** (as of 0.6.0). Region applicability is reflected by `requestAgeRange()` itself.
+
+On iOS 26.4+, `getRequiredRegulatoryFeatures()` is the reliable way to check what Apple requires for the current user before prompting; it answers a more precise question than the old eligibility flag ever did.
 
 **Behavior:**
 - **iOS 26.0+**: Calls `requestAgeRange()` directly
