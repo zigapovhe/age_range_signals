@@ -1,6 +1,6 @@
 ## 0.7.0
 
-* **iOS**: Added `getRequiredRegulatoryFeatures()` (iOS 26.4+), which reports whether Apple requires the current user to share an age range and whether significant-change notification or parental consent applies (#31). Calls are guarded by a 10-second deadline.
+* **iOS**: Added `getRequiredRegulatoryFeatures()` (iOS 26.4+), which reports whether Apple requires the current user to share an age range and whether significant-change notification or parental consent applies (#31). Calls are guarded by a 10-second deadline. Throws `UnsupportedPlatformException` below iOS 26.4 so an empty set always means Apple affirmatively reports nothing is required; on Android the set is always empty.
 * **iOS**: Added `showSignificantUpdateAcknowledgment(updateDescription:)`, the system sheet for significant app changes (iOS 26.4+). Throws `UnsupportedPlatformException` where unavailable instead of silently succeeding.
 * **iOS**: `AgeSignalsResult` now includes `activeParentalControls`.
 * **Android**: `AgeSignalsResult` now includes `mostRecentApprovalDate`; mockable via `AgeSignalsMockData`.

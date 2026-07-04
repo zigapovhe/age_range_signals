@@ -61,7 +61,8 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// Returns the regulatory features Apple reports as required for the
   /// current user (iOS 26.4+).
   ///
-  /// Returns an empty set on Android and on iOS below 26.4.
+  /// Returns an empty set on Android. Throws [UnsupportedPlatformException]
+  /// on iOS below 26.4 and in apps built with a pre-26.4 SDK.
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
     throw UnimplementedError(
       'getRequiredRegulatoryFeatures() has not been implemented.',

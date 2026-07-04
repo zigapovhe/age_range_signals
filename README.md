@@ -265,7 +265,18 @@ if (features
 }
 ```
 
-The set is empty on Android and on iOS below 26.4, so treat an empty set as "nothing reportable", not as proof that no law applies; keep your own regional logic for older OS versions.
+An empty set means Apple affirmatively reports that nothing is required. On Android the set is always empty (the Play API has no equivalent concept). On iOS below 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement cannot be checked; catch it and keep your own regional logic for those devices:
+
+```dart
+Set<AgeRegulatoryFeature> features;
+try {
+  features = await AgeRangeSignals.instance.getRequiredRegulatoryFeatures();
+} on UnsupportedPlatformException {
+  // Older iOS: Apple cannot report requirements here. Fall back to your
+  // own region-based decision about whether to prompt.
+  features = const {};
+}
+```
 
 ### 18+ Only App
 
@@ -326,7 +337,7 @@ Main class for interacting with the plugin.
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user.
 
-- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). Empty set on Android and on iOS below 26.4. If `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Requires building with the iOS 26.4 SDK (Xcode 26.4+); on older SDKs it also returns an empty set.
+- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means Apple affirmatively reports nothing is required; if `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
 
 - `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Throws `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op.
 

@@ -380,10 +380,15 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             return
         }
         #endif
-        // Below iOS 26.4, or built with an SDK that predates the API:
-        // nothing is required, by definition of "we cannot know". Returning
-        // an empty list (not an error) keeps the Dart contract simple.
-        result([String]())
+        // Below iOS 26.4, or built with an SDK that predates the API, we
+        // cannot know what is required. Erroring keeps "empty set" reserved
+        // for Apple affirmatively reporting that nothing is required, so a
+        // compliance flow can never mistake "could not check" for "none".
+        result(FlutterError(
+            code: "UNSUPPORTED_PLATFORM",
+            message: "Regulatory features require iOS 26.4 and an app built with the iOS 26.4 SDK",
+            details: nil
+        ))
     }
 
     private func handleShowSignificantUpdateAcknowledgment(call: FlutterMethodCall, result: @escaping FlutterResult) {

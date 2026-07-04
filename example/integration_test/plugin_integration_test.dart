@@ -55,9 +55,10 @@ void main() {
       // ignore: avoid_print
       print('regulatory features: $features');
     } on AgeSignalsException catch (e) {
-      // Acceptable on iOS: the API can reject the caller (entitlement,
-      // region, no Apple Account on a simulator). The typed exception
-      // proves the native handler ran and mapped the error.
+      // Acceptable on iOS: UnsupportedPlatformException below 26.4, or the
+      // API rejecting the caller (entitlement, region, no Apple Account on
+      // a simulator). The typed exception proves the native handler ran
+      // and mapped the error.
       // ignore: avoid_print
       print('regulatory features threw: ${e.runtimeType}: $e');
     }

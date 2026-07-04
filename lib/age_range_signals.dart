@@ -115,17 +115,21 @@ class AgeRangeSignals {
   /// Returns the regulatory features Apple reports as required for the
   /// current user, based on their region and account settings (iOS 26.4+).
   ///
-  /// Use this to decide whether you need to prompt at all: if the returned
-  /// set does not contain [AgeRegulatoryFeature.declaredAgeRangeRequired],
-  /// Apple imposes no obligation to request this user's age range.
+  /// Use this to decide whether you need to prompt at all: an empty set
+  /// means Apple affirmatively reports that no regulatory action is
+  /// required for this user. If the set does not contain
+  /// [AgeRegulatoryFeature.declaredAgeRangeRequired], Apple imposes no
+  /// obligation to request this user's age range.
   ///
-  /// Returns an empty set on Android (the Play Age Signals API has no
-  /// equivalent; it implicitly limits itself to regions where it is legally
-  /// required) and on iOS below 26.4. Requires building with an Xcode that
-  /// ships the iOS 26.4 SDK; on older SDKs the method also returns an empty
-  /// set.
+  /// Returns an empty set on Android: the Play Age Signals API has no
+  /// equivalent concept and implicitly limits itself to regions where it
+  /// is legally required, so "nothing to report" is the true answer there.
   ///
-  /// Throws [AgeSignalsException] subclasses on API errors.
+  /// Throws [UnsupportedPlatformException] on iOS below 26.4 and in apps
+  /// built with an SDK older than iOS 26.4 (Xcode < 26.4), where the
+  /// requirement cannot be checked. This keeps the empty set unambiguous;
+  /// keep your own regional logic for those devices. Throws other
+  /// [AgeSignalsException] subclasses on API errors.
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
     return AgeRangeSignalsPlatform.instance.getRequiredRegulatoryFeatures();
   }
