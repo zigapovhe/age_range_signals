@@ -161,15 +161,22 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         details: nil
                     ))
                 }
+            } catch AgeRangeService.Error.notAvailable {
+                // Apple throws this when age range sharing is not available
+                // for the user, region, or account state; unentitled apps
+                // can surface it too. Earlier versions guessed
+                // MISSING_ENTITLEMENT from its raw error code (0), which
+                // misled on correctly entitled devices.
+                result(FlutterError(
+                    code: "API_NOT_AVAILABLE",
+                    message: "Age range sharing is not available for this user or region. If you expected it to be available, confirm the app is signed with the declared-age-range entitlement.",
+                    details: nil
+                ))
             } catch {
                 let nsError = error as NSError
                 let errorMessage = error.localizedDescription
                 let errorDomain = nsError.domain
                 let errorCode = nsError.code
-
-                // Check for specific error types
-                let isDeclaredAgeRangeError = errorDomain.contains("DeclaredAgeRange") ||
-                                             errorDomain.contains("AgeRangeService")
 
                 // User cancelled the prompt
                 if errorDomain == NSCocoaErrorDomain && errorCode == 3072 ||
@@ -183,9 +190,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     return
                 }
 
-                // Entitlement error (error code 0 with DeclaredAgeRange domain)
-                let likelyEntitlementError = (errorCode == 0 && isDeclaredAgeRangeError) ||
-                                            errorMessage.lowercased().contains("entitlement") ||
+                let likelyEntitlementError = errorMessage.lowercased().contains("entitlement") ||
                                             errorMessage.lowercased().contains("not entitled")
 
                 if likelyEntitlementError {

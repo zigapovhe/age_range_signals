@@ -685,12 +685,19 @@ try {
 
 **MissingEntitlementException (iOS)**
 - The `com.apple.developer.declared-age-range` entitlement isn't present in the signed app at runtime
-- Most common cause: the key is in `Runner.entitlements` but the **capability isn't registered on your App ID**, so Xcode silently strips it at signing
+- Common causes: the key is in `Runner.entitlements` but the **capability isn't registered on your App ID** (Xcode falls back to a wildcard profile without it), or the entitlements file exists but the project has no `CODE_SIGN_ENTITLEMENTS` build setting pointing at it, so it never enters the signature at all
 - **Solution**:
     1. Add the key to `Runner.entitlements` (see iOS Setup)
-    2. Enable the **Declared Age Range** capability on your App ID via Xcode → Signing & Capabilities → **+ Capability** (self-serve; no Apple approval needed)
-    3. Let Xcode regenerate the provisioning profile (toggle the team or hit "Try Again" under Signing if needed)
-    4. Verify with `codesign -d --entitlements :- YourApp.app | grep declared-age-range`
+    2. Make sure the Runner target's `CODE_SIGN_ENTITLEMENTS` build setting references that file (adding the capability via Xcode's Signing & Capabilities tab does this for you)
+    3. Enable the **Declared Age Range** capability on your App ID via Xcode → Signing & Capabilities → **+ Capability** (self-serve; no Apple approval needed)
+    4. Let Xcode regenerate the provisioning profile (toggle the team or hit "Try Again" under Signing if needed)
+    5. Verify with `codesign -d --entitlements :- YourApp.app | grep declared-age-range`
+- Since 0.7.0, "age range sharing not available for this user or region" is reported as `ApiNotAvailableException`; earlier versions misreported that state as `MissingEntitlementException` even on correctly entitled apps
+
+**ApiErrorException: "requiredRegulatoryFeatures failed: Timed out after 10.0s" (iOS)**
+- Apple's regulatory features call can hang instead of returning; the plugin's 10-second deadline converts the hang into this error
+- Observed on a real iOS 26.5 device in **debug** builds even with the correct entitlement and a covered-region sandbox account, while the identical app in **release** mode answered in about 140 ms
+- **Solution**: treat it as transient; test regulatory features on release (or TestFlight) builds
 
 **UserCancelledException**
 - User cancelled the age verification prompt

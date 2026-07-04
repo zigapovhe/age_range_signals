@@ -35,6 +35,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   bool _isInitialized = false;
   final bool _isIos = Platform.isIOS;
   String _currentScenario = 'Default (Supervised 13-15)';
+  String? _regulatoryOutcome;
+  String? _acknowledgmentOutcome;
 
   final List<int> _ageGates = [13, 16, 18];
 
@@ -121,6 +123,51 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
     }
   }
 
+  Future<void> _getRegulatoryFeatures() async {
+    setState(() {
+      _regulatoryOutcome = 'Checking...';
+    });
+    final stopwatch = Stopwatch()..start();
+    try {
+      final features = await AgeRangeSignals.instance
+          .getRequiredRegulatoryFeatures();
+      stopwatch.stop();
+      setState(() {
+        _regulatoryOutcome = features.isEmpty
+            ? 'Empty set (Apple reports nothing required) '
+                  'in ${stopwatch.elapsedMilliseconds} ms'
+            : '${features.map((f) => f.name).join(', ')} '
+                  'in ${stopwatch.elapsedMilliseconds} ms';
+      });
+    } on AgeSignalsException catch (e) {
+      stopwatch.stop();
+      setState(() {
+        _regulatoryOutcome =
+            '${e.runtimeType}: ${e.message} '
+            '(${stopwatch.elapsedMilliseconds} ms)';
+      });
+    }
+  }
+
+  Future<void> _showSignificantUpdate() async {
+    setState(() {
+      _acknowledgmentOutcome = 'Presenting...';
+    });
+    try {
+      await AgeRangeSignals.instance.showSignificantUpdateAcknowledgment(
+        updateDescription:
+            'We added social features and public profiles to this app.',
+      );
+      setState(() {
+        _acknowledgmentOutcome = 'Acknowledged';
+      });
+    } on AgeSignalsException catch (e) {
+      setState(() {
+        _acknowledgmentOutcome = '${e.runtimeType}: ${e.message}';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,6 +182,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             if (!_isIos) ...[const SizedBox(height: 12), _buildScenarioCard()],
             const SizedBox(height: 16),
             _buildCheckButton(),
+            const SizedBox(height: 12),
+            _buildRegulatoryCard(),
             const SizedBox(height: 24),
             if (_isLoading) _buildLoadingIndicator(),
             if (_error != null) _buildErrorCard(),
@@ -292,6 +341,51 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
     );
   }
 
+  Widget _buildRegulatoryCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Regulatory Features (iOS 26.4+)',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _getRegulatoryFeatures,
+              icon: const Icon(Icons.policy_outlined),
+              label: const Text('Get Required Regulatory Features'),
+            ),
+            if (_regulatoryOutcome != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _regulatoryOutcome!,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _showSignificantUpdate,
+              icon: const Icon(Icons.campaign_outlined),
+              label: const Text('Show Significant Update Sheet'),
+            ),
+            if (_acknowledgmentOutcome != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _acknowledgmentOutcome!,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildIosWarningCard() {
     return Card(
       color: Colors.orange[50],
@@ -315,7 +409,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Runs the real DeclaredAgeRange API (iOS 26.2+). The App ID bundled with this example is not entitled, so Check returns a "Missing Entitlement" error here. That is expected. To see live results, build with your own App ID that has the com.apple.developer.declared-age-range capability registered, then sign into a Sandbox Apple Account set to an applicable region (Settings > Developer) and pick a scenario under Manage > Age Assurance. See the iOS Testing section of the README.',
+                    'Runs the real DeclaredAgeRange API (iOS 26.2+). The project references Runner.entitlements, so device signing requires the com.apple.developer.declared-age-range capability registered on your App ID; register it in the developer portal or point the bundle ID at an App ID that has it. To exercise real responses, sign into a Sandbox Apple Account set to an applicable region (Settings > Developer) and pick a scenario under Age Assurance. Prefer release builds for this: debug builds have been seen to stall on the regulatory features call (the plugin times out after 10 seconds). See the iOS Testing section of the README.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
