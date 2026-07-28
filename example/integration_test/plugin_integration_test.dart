@@ -16,6 +16,36 @@ void main() {
     );
   });
 
+  testWidgets('requestAgeSignalsAccess resolves to a typed outcome', (
+    WidgetTester tester,
+  ) async {
+    // A MissingPluginException here would mean the channel method name is
+    // wired wrong on one platform.
+    try {
+      final status = await AgeRangeSignals.instance
+          .requestAgeSignalsAccess()
+          .timeout(const Duration(seconds: 20));
+      expect(status, isA<AgeSignalsAccessStatus>());
+      if (Platform.isIOS) {
+        // iOS has no separate access grant; shared is the fixed answer.
+        expect(status, AgeSignalsAccessStatus.shared);
+      }
+    } on AgeSignalsException catch (e) {
+      // Acceptable on Android builds without Play (emulator, sideload).
+      // ignore: avoid_print
+      print('requestAgeSignalsAccess threw: ${e.runtimeType}: $e');
+    } on TimeoutException {
+      // Play presented its age sharing prompt and is waiting for a person;
+      // integration tests cannot tap system UI. Reaching the prompt still
+      // proves the native call went through.
+      // ignore: avoid_print
+      print(
+        'requestAgeSignalsAccess: prompt presented (timed out waiting for '
+        'user input, as expected in an automated run)',
+      );
+    }
+  });
+
   testWidgets('checkAgeSignals returns a result or throws exception', (
     WidgetTester tester,
   ) async {

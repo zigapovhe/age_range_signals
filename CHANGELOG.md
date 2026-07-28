@@ -1,18 +1,18 @@
 ## 0.8.0
 
-* **Android**: Migrated to `com.google.android.play:age-signals` 0.0.4, which removed the `userStatus` verdict. `checkAgeSignals()` now runs Play's two-step flow (`requestAgeSignalsAccess()` then `checkAgeSignals()`) and derives the status from the sharing status, the assurance tier, and the app-version approval state.
-  * **Breaking**: `AgeSignalsResult.mostRecentApprovalDate` is now `significantChangeApprovalDate`, matching Play's rename. The old name still works but is deprecated.
-  * **Breaking**: `AgeSignalsStatus.verificationRequired` was added for Play's `VERIFICATION_REQUIRED`, and `AgeDeclarationSource` gained `estimated` and `idVerified`. Exhaustive switches over either enum need new cases.
-  * `AgeDeclarationSource` is no longer iOS-only: Android now reports the assurance tier behind an age range (`TIER_A`-`TIER_D`) through `source`.
-  * **Breaking**: `AgeSignalsStatus.declared` is deprecated and no longer returned. It conflated the verdict with how the age was established, so a self-declared adult could never clear a `verified` gate while the weaker `estimated` tier could. Self-declared users are now judged by age like any other unsupervised user; read `source == AgeDeclarationSource.selfDeclared` instead.
-  * Android now derives `verified` from the highest gate passed to `initialize()` rather than a hardcoded 18, so one `status` check means the same thing on both platforms. It still falls back to 18 when no gates are supplied.
-  * Android maps Play's `NOT_SHARED` to `unknown`, not `declined`. That value covers both a refusal and an out-of-scope region, so the plugin does not assert an intent the user may never have expressed.
-  * **Breaking**: `useMockData: true` is now refused in non-debuggable builds and throws `MockDataNotAllowedException`. `FakeAgeSignalsManager` forges age signals, so a shipped release that reaches it can hand a fabricated age gate to real users. Build a debuggable variant if you need mock data on a release-like artifact.
-  * The plugin is now `ActivityAware`; Play needs an Activity to host the sharing prompt. Without one, `checkAgeSignals()` throws `ApiErrorException` with `PRESENTATION_CONTEXT_UNAVAILABLE`.
+* **Android**: Updated `com.google.android.play:age-signals` from 0.0.3 to 0.0.4, which removes the library's `userStatus` and replaces it with `ageRangeSource` + `significantChangeStatus`.
+* **Android**: Added `requestAgeSignalsAccess()`, the first half of the 0.0.4 two-call flow. It may show Play's in-app age sharing prompt (the plugin now implements `ActivityAware` to present it) and returns an `AgeSignalsAccessStatus`: `shared`, `notShared` (a decline is not an error), or `verificationRequired` (mandatory-verification regions; the user verifies in the Play Store). Call it before `checkAgeSignals()` and only read signals on `shared`. On iOS it returns `shared` without showing anything, since Apple gathers consent inside `checkAgeSignals()` itself, so one call sequence works on both platforms.
+* **Android**: `AgeSignalsResult` now exposes `ageRangeSource` (tierA self-declared, tierB parent-managed, tierC estimated, tierD ID-verified) and `significantChangeStatus` (approved/pending/declined, supervised users).
+* **Breaking**: `status` is now derived from the reported age band measured against your highest configured age gate, not from the assurance tier. `ageRangeSource` describes how an age was established, not what it is: a `tierD` result means an ID was checked, and that ID can read 12. Android falls back to 18 when `initialize()` is called without gates, and applies the same comparison iOS already used, so one `status` check means the same thing on both platforms.
+* **Breaking**: `AgeSignalsStatus.declared` is deprecated and no longer returned. It conflated the verdict with how the age was established, so a self-declared adult could never clear a `verified` gate while the stronger `tierC` and `tierD` passed automatically. Read `ageRangeSource == AgeRangeSource.tierA` instead.
+* **Breaking**: Renamed `AgeSignalsResult.mostRecentApprovalDate` to `significantChangeApprovalDate`, following the same rename in age-signals 0.0.4. The old name still works as a deprecated alias on the result, on `AgeSignalsMockData`, and on both constructors and `copyWith`, and `fromMap` still accepts the old channel key so results persisted under 0.7.x round-trip.
+* **Breaking**: `useMockData: true` is refused in non-debuggable builds and throws `MockDataNotAllowedException`. `FakeAgeSignalsManager` forges age signals, so a shipped release that reaches it can hand a fabricated age gate to real users. Build a debuggable variant if you need mock data on a release-like artifact.
+* **Android**: `AgeSignalsMockData` gained `accessStatus` (mock outcome of the access request, defaults to `shared`) and explicit `ageRangeSource` / `significantChangeStatus` overrides; when omitted, both are derived from `status`. Explicit `ageLower`/`ageUpper` are honored for verified mocks too, matching the real API's open-ended 18+ band (`ageLower: 18, ageUpper: null`).
+* **Docs**: Documented the two-call architecture, the new enums, `installId`'s role in revoked app approvals (Play Console CSV, 90-day retention), and Play's prompt-suppression behavior after repeated dismissals.
 * **Docs**: Updated regulatory status. Texas SB 2420 is firmly in effect after the Supreme Court declined to intervene in July 2026. Utah and Louisiana obligations are delayed to 2027, but Apple has shared age categories for new accounts there since May 6 and July 1, 2026, so the API can return real data today. Added Singapore and Apple's Brazil storefront changes.
 * **Docs**: Added badges, split the oversized "Basic Example" into a short runnable snippet plus a full reference section, and completed dartdoc coverage.
 * **Meta**: Added `context7.json` and `llms.txt` for AI coding agents; replaced the `android` and `ios` topics with `privacy` and `compliance`.
-* **Example**: Added a mock-data toggle so the real Play API can be exercised on device, and moved the result card directly under the check button.
+* **Example**: Added a "Request Age Signals Access" step, an "Access Not Shared" scenario chip, result rows for the new fields, a mock-data toggle so the real Play API can be exercised on device, and moved the result card directly under the check button.
 
 ## 0.7.0
 
@@ -118,7 +118,7 @@
 ## 0.2.0
 
 * **Android**: ⚠️ **CRITICAL UPDATE** - Bumped Play Age Signals API library version to non-beta stable release `com.google.android.play:age-signals:0.0.1` (thanks to @rokarnus for reporting this in #5)
-  
+
 * **ACTION REQUIRED**: Users must upgrade to version 0.2.0 or higher before January 1, 2026
   * **Why**: From January 1, 2026, all beta versions (0.0.1-beta*) of the Play Age Signals API will throw exceptions
   * **Impact**: Apps using older versions of this plugin (with beta API) will stop working after January 1, 2026

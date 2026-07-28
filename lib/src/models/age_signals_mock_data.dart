@@ -1,3 +1,4 @@
+import 'age_signals_access_status.dart';
 import 'age_signals_result.dart';
 
 /// Configuration for mock/test data used when [useMockData] is true.
@@ -29,6 +30,9 @@ class AgeSignalsMockData {
     this.ageUpper,
     this.source,
     this.installId,
+    this.accessStatus,
+    this.ageRangeSource,
+    this.significantChangeStatus,
     DateTime? significantChangeApprovalDate,
     @Deprecated(
       'Use significantChangeApprovalDate instead. '
@@ -43,23 +47,19 @@ class AgeSignalsMockData {
 
   /// The mock lower bound of the user's age range.
   ///
-  /// Play reports a band for adults too, so a `verified` mock defaults to 18
-  /// rather than null. Supply a value below your adult threshold and the mock
-  /// comes back as `supervised`, matching how the real API is interpreted.
+  /// Should be provided for supervised status on Android.
+  /// Can be null for verified status.
   final int? ageLower;
 
   /// The mock upper bound of the user's age range.
   ///
-  /// Null represents the open-ended top band (e.g. `ageLower: 18` with no
-  /// upper bound), which is what a `verified` mock produces by default.
+  /// Should be provided for supervised status on Android.
+  /// Can be null for verified status.
   final int? ageUpper;
 
-  /// The mock assurance tier to report.
+  /// The mock source of the age declaration.
   ///
-  /// Android only, and load-bearing: it selects the Play `AgeRangeSource`
-  /// tier the fake manager returns, which in turn decides the derived
-  /// [AgeSignalsStatus] and whether `installId` is populated. When omitted,
-  /// the tier is inferred from [status]. Ignored on iOS.
+  /// Not used on any platform currently (reserved for future use).
   final AgeDeclarationSource? source;
 
   /// Mock unique identifier for this app installation (Android only).
@@ -67,10 +67,36 @@ class AgeSignalsMockData {
   /// Only used when testing Android scenarios.
   final String? installId;
 
-  /// Mock guardian approval date (Android only).
+  /// The mock outcome of `requestAgeSignalsAccess()` (Android only).
   ///
-  /// Maps to the `significantChangeApprovalDate` reported by the Play Age Signals
-  /// API for supervised users.
+  /// Defaults to [AgeSignalsAccessStatus.shared] when null, so mocked
+  /// flows proceed straight into `checkAgeSignals()`. Set
+  /// [AgeSignalsAccessStatus.notShared] or
+  /// [AgeSignalsAccessStatus.verificationRequired] to exercise the paths
+  /// where no age signals may be requested.
+  final AgeSignalsAccessStatus? accessStatus;
+
+  /// Explicit mock [AgeRangeSource] tier (Android only).
+  ///
+  /// When null, the tier is derived from [status] (verified maps to tierC,
+  /// declared to tierA, the supervised family to tierB). The result's
+  /// status is always re-derived from the resolved tier and change status,
+  /// exactly as with real API responses, so an explicit tier wins over a
+  /// contradictory [status]. Set it to pin a specific tier, e.g. verified
+  /// via [AgeRangeSource.tierD].
+  final AgeRangeSource? ageRangeSource;
+
+  /// Explicit mock [SignificantChangeStatus] (Android only).
+  ///
+  /// When null, it is derived from [status]
+  /// (supervisedApprovalPending maps to pending, supervisedApprovalDenied
+  /// to declined, otherwise unset).
+  final SignificantChangeStatus? significantChangeStatus;
+
+  /// Mock significant change approval date (Android only).
+  ///
+  /// Maps to the `significantChangeApprovalDate` reported by the Play Age
+  /// Signals API for supervised users.
   final DateTime? significantChangeApprovalDate;
 
   /// Renamed to [significantChangeApprovalDate] in 0.8.0, following Play
@@ -89,6 +115,9 @@ class AgeSignalsMockData {
       'ageUpper': ageUpper,
       'source': source?.name,
       'installId': installId,
+      'accessStatus': accessStatus?.name,
+      'ageRangeSource': ageRangeSource?.name,
+      'significantChangeStatus': significantChangeStatus?.name,
       'significantChangeApprovalDate':
           significantChangeApprovalDate?.millisecondsSinceEpoch,
     };
@@ -101,6 +130,9 @@ class AgeSignalsMockData {
     int? ageUpper,
     AgeDeclarationSource? source,
     String? installId,
+    AgeSignalsAccessStatus? accessStatus,
+    AgeRangeSource? ageRangeSource,
+    SignificantChangeStatus? significantChangeStatus,
     DateTime? significantChangeApprovalDate,
     @Deprecated(
       'Use significantChangeApprovalDate instead. '
@@ -114,6 +146,10 @@ class AgeSignalsMockData {
       ageUpper: ageUpper ?? this.ageUpper,
       source: source ?? this.source,
       installId: installId ?? this.installId,
+      accessStatus: accessStatus ?? this.accessStatus,
+      ageRangeSource: ageRangeSource ?? this.ageRangeSource,
+      significantChangeStatus:
+          significantChangeStatus ?? this.significantChangeStatus,
       significantChangeApprovalDate:
           significantChangeApprovalDate ??
           mostRecentApprovalDate ??
@@ -125,6 +161,8 @@ class AgeSignalsMockData {
   String toString() {
     return 'AgeSignalsMockData(status: $status, ageLower: $ageLower, '
         'ageUpper: $ageUpper, source: $source, installId: $installId, '
+        'accessStatus: $accessStatus, ageRangeSource: $ageRangeSource, '
+        'significantChangeStatus: $significantChangeStatus, '
         'significantChangeApprovalDate: $significantChangeApprovalDate)';
   }
 
@@ -138,6 +176,9 @@ class AgeSignalsMockData {
         other.ageUpper == ageUpper &&
         other.source == source &&
         other.installId == installId &&
+        other.accessStatus == accessStatus &&
+        other.ageRangeSource == ageRangeSource &&
+        other.significantChangeStatus == significantChangeStatus &&
         other.significantChangeApprovalDate?.millisecondsSinceEpoch ==
             significantChangeApprovalDate?.millisecondsSinceEpoch;
   }
@@ -150,6 +191,9 @@ class AgeSignalsMockData {
       ageUpper,
       source,
       installId,
+      accessStatus,
+      ageRangeSource,
+      significantChangeStatus,
       significantChangeApprovalDate?.millisecondsSinceEpoch,
     );
   }

@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'age_range_signals_platform_interface.dart';
 import 'src/exceptions/age_signals_exception.dart';
 import 'src/models/age_regulatory_feature.dart';
+import 'src/models/age_signals_access_status.dart';
 import 'src/models/age_signals_mock_data.dart';
 import 'src/models/age_signals_result.dart';
 
@@ -41,6 +42,21 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
         'useMockData': useMockData,
         'mockData': mockData?.toMap(),
       });
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
+  @override
+  Future<AgeSignalsAccessStatus> requestAgeSignalsAccess() async {
+    try {
+      final status = await methodChannel.invokeMethod<String>(
+        'requestAgeSignalsAccess',
+      );
+      if (status == null) {
+        throw const AgeSignalsException('Received null result from platform');
+      }
+      return AgeSignalsAccessStatus.fromName(status);
     } on PlatformException catch (e) {
       throw _handlePlatformException(e);
     }
@@ -121,7 +137,8 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
         );
       case 'PRESENTATION_CONTEXT_UNAVAILABLE':
         return ApiErrorException(
-          e.message ?? 'No view controller or window scene available',
+          e.message ??
+              'No view controller, window scene, or activity available',
           e.code,
           details,
         );

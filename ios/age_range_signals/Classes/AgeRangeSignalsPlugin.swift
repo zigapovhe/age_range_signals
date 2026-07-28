@@ -22,6 +22,13 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "initialize":
             handleInitialize(call: call, result: result)
+        case "requestAgeSignalsAccess":
+            // Play's separate access grant has no Apple counterpart: consent
+            // is gathered by requestAgeRange() inside checkAgeSignals, and a
+            // refusal surfaces there as the "declined" status. "shared" is
+            // the honest answer and keeps one call sequence working on both
+            // platforms.
+            result("shared")
         case "checkAgeSignals":
             handleCheckAgeSignals(result: result)
         case "getRequiredRegulatoryFeatures":
@@ -249,6 +256,8 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             "source": source as Any? ?? NSNull(),
             "installId": NSNull(),
             "activeParentalControls": activeParentalControls as Any? ?? NSNull(),
+            "ageRangeSource": NSNull(),
+            "significantChangeStatus": NSNull(),
             "significantChangeApprovalDate": NSNull()
         ]
     }
