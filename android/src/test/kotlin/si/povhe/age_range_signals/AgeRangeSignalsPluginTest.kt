@@ -10,6 +10,8 @@ import io.flutter.plugin.common.MethodChannel
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 internal class AgeRangeSignalsPluginTest {
@@ -226,5 +228,32 @@ internal class AgeRangeSignalsPluginTest {
         )
         assertEquals("unknown", plugin.accessStatusName(AgeSignalsStatus.UNSPECIFIED))
         assertEquals("unknown", plugin.accessStatusName(null))
+    }
+
+    // --- Mock data is refused outside debuggable builds ---
+
+    @Test
+    fun shouldRejectMockData_onlyBlocksMockDataInReleaseBuilds() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        // The case that matters: a shipped build that would otherwise forge
+        // its own age gate for real users.
+        assertTrue(plugin.shouldRejectMockData(useMockData = true) { false })
+
+        assertFalse(plugin.shouldRejectMockData(useMockData = true) { true })
+        assertFalse(plugin.shouldRejectMockData(useMockData = false) { false })
+        assertFalse(plugin.shouldRejectMockData(useMockData = false) { true })
+    }
+
+    @Test
+    fun shouldRejectMockData_doesNotProbeTheBuildTypeWhenMockDataIsOff() {
+        // isDebuggable() reads the Android Context, so it must not be consulted
+        // on the common path where no mock data was requested.
+        val plugin = AgeRangeSignalsPlugin()
+        var probed = false
+
+        plugin.shouldRejectMockData(useMockData = false) { probed = true; true }
+
+        assertFalse(probed)
     }
 }

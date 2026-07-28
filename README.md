@@ -210,9 +210,6 @@ try {
     case AgeSignalsStatus.declined:
       print('User declined to share age information');
       break;
-    case AgeSignalsStatus.verificationRequired:
-      print('Android: send the user to the Play Store to verify their age');
-      break;
     case AgeSignalsStatus.unknown:
       print('Age information is not available');
       break;
@@ -408,7 +405,7 @@ Main class for interacting with the plugin.
 #### Methods
 
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
-  - `ageGates`: (iOS only) Age thresholds (e.g., `[13, 16, 18]`). Required for iOS, ignored on Android. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
+  - `ageGates`: Age thresholds (e.g., `[13, 16, 18]`). Required on iOS. Play ignores them, but Android uses your highest gate as the bar for `verified`, falling back to 18 when omitted, so pass them on both platforms. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
   - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
   - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
@@ -505,7 +502,7 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 **Note:** Android never returns `declined`. Play reports `notShared` both for a genuine refusal and for a user who was never asked because their region is out of scope, and the two are indistinguishable, so the plugin reports `unknown` rather than asserting an intent. Only iOS reports a real refusal.
 
-**Note:** On Android, age ranges are determined by Google Play's parental control settings and returned as predefined age bands (0-12, 13-15, 16-17, 18+). The `ageGates` parameter is **not used** on Android - it's iOS-only. You cannot customize these age bands through the plugin; they're controlled by Google Play and can optionally be customized in Play Console.
+**Note:** On Android, age ranges are determined by Google Play's parental control settings and returned as predefined age bands (0-12, 13-15, 16-17, 18+). Play itself ignores `ageGates`, but the plugin uses your highest gate as the bar for `verified`, so call `initialize()` with your gates on Android too. You cannot customize these age bands through the plugin; they're controlled by Google Play and can optionally be customized in Play Console.
 
 **iOS (DeclaredAgeRange API):**
 
@@ -682,13 +679,12 @@ await AgeRangeSignals.instance.initialize(
   ),
 );
 
-// Test verified user (18+) - age values should be null
+// Test verified user (18+) - defaults to the open-ended 18+ band
 await AgeRangeSignals.instance.initialize(
   useMockData: true,
   mockData: const AgeSignalsMockData(
     status: AgeSignalsStatus.verified,
-    // Don't provide ageLower, ageUpper, or installId
-    // They will be null as expected for verified users
+    // Omitting the band gives the open-ended adult band (ageLower: 18)
   ),
 );
 
@@ -748,7 +744,7 @@ await AgeRangeSignals.instance.initialize(
 - Easier automated testing and manual QA
 - Default behavior (supervised 13-15) maintained for backward compatibility
 
-**Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`). Verified mocks return `null` bounds unless you set them explicitly - a real verified response reports the open-ended 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it. See [AgeSignalsResult](#agesignalsresult) for the full rules.
+**Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`). Verified mocks default to the open-ended adult band (`ageLower: 18, ageUpper: null`), because the verdict is derived from the band - a real verified response reports the open-ended 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it. See [AgeSignalsResult](#agesignalsresult) for the full rules.
 
 ### iOS Testing
 
@@ -809,8 +805,8 @@ try {
 ## Limitations
 
 ### Android
-- Play needs an `Activity` to host its sharing prompt. The plugin is `ActivityAware`, but if it is called with no attached Activity, `checkAgeSignals()` throws `ApiErrorException` with code `PRESENTATION_CONTEXT_UNAVAILABLE`
-- `AgeSignalsStatus.verificationRequired` has no in-app resolution: the user must complete verification in the Play Store app
+- Play needs an `Activity` to host its sharing prompt. The plugin is `ActivityAware`, but if it is called with no attached Activity, `requestAgeSignalsAccess()` throws `ApiErrorException` with code `PRESENTATION_CONTEXT_UNAVAILABLE`
+- `AgeSignalsAccessStatus.verificationRequired`, returned by `requestAgeSignalsAccess()`, has no in-app resolution: the user must complete verification in the Play Store app
 - The Play Age Signals API is currently in beta
 - Only returns real data in regions where the laws are in effect (see [Regulatory Status](#regulatory-status) for current dates). Platform rollout timing may not align exactly with the statutory dates, so rely on the runtime signal rather than assuming when data becomes available
 - Use `useMockData: true` for testing until APIs go live in your target states

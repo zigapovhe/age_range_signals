@@ -12,7 +12,7 @@
 * **Docs**: Updated regulatory status. Texas SB 2420 is firmly in effect after the Supreme Court declined to intervene in July 2026. Utah and Louisiana obligations are delayed to 2027, but Apple has shared age categories for new accounts there since May 6 and July 1, 2026, so the API can return real data today. Added Singapore and Apple's Brazil storefront changes.
 * **Docs**: Added badges, split the oversized "Basic Example" into a short runnable snippet plus a full reference section, and completed dartdoc coverage.
 * **Meta**: Added `context7.json` and `llms.txt` for AI coding agents; replaced the `android` and `ios` topics with `privacy` and `compliance`.
-* **Example**: Added a "Request Age Signals Access" step, an "Access Not Shared" scenario chip, result rows for the new fields, a mock-data toggle so the real Play API can be exercised on device, and moved the result card directly under the check button.
+* **Example**: Added a "Request Age Signals Access" step, an "Access Not Shared" scenario chip, result rows for the new fields, a mock-data toggle so the real Play API can be exercised on device, and moved the result card directly under the buttons that produce it.
 
 ## 0.7.0
 

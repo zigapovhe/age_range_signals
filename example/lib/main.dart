@@ -39,6 +39,10 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   String? _regulatoryOutcome;
   String? _acknowledgmentOutcome;
 
+  /// Android only. When false the real Play Age Signals API is used, which is
+  /// the only way to see what Play actually reports for a live account.
+  bool _useMockData = true;
+
   final List<int> _ageGates = [13, 16, 18];
 
   @override
@@ -53,7 +57,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         ageGates: _ageGates,
         // useMockData: Android only - uses Google's FakeAgeSignalsManager
         // On iOS, this is ignored and the real DeclaredAgeRange API is always used
-        useMockData: true, // Set to true for testing, false for production
+        useMockData: _useMockData, // Toggle in the UI; false hits the real API
         mockData: mockData, // Android only - custom mock data for testing
       );
       setState(() {
@@ -93,6 +97,16 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         _accessOutcome = '${e.runtimeType}: ${e.message}';
       });
     }
+  }
+
+  Future<void> _setUseMockData(bool value) async {
+    setState(() {
+      _useMockData = value;
+      _isInitialized = false;
+      _result = null;
+      _error = null;
+    });
+    await _initializePlugin();
   }
 
   Future<void> _checkAgeSignals() async {
@@ -197,17 +211,22 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           children: [
             _buildInfoCard(),
             if (_isIos) ...[const SizedBox(height: 12), _buildIosWarningCard()],
-            if (!_isIos) ...[const SizedBox(height: 12), _buildScenarioCard()],
+            if (!_isIos && _useMockData) ...[
+              const SizedBox(height: 12),
+              _buildScenarioCard(),
+            ],
             const SizedBox(height: 16),
             _buildAccessButton(),
             const SizedBox(height: 12),
             _buildCheckButton(),
+            // The outcome sits immediately under the buttons that produce it.
+            // Anything else here pushes it off screen on a phone.
             const SizedBox(height: 12),
-            _buildRegulatoryCard(),
-            const SizedBox(height: 24),
             if (_isLoading) _buildLoadingIndicator(),
             if (_error != null) _buildErrorCard(),
             if (_result != null) _buildResultCard(),
+            const SizedBox(height: 24),
+            _buildRegulatoryCard(),
           ],
         ),
       ),
@@ -242,9 +261,23 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 8),
+            if (Platform.isAndroid)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _useMockData,
+                onChanged: _setUseMockData,
+                title: const Text('Use mock data'),
+                subtitle: Text(
+                  _useMockData
+                      ? 'FakeAgeSignalsManager replays the scenario you pick below. Debuggable builds only.'
+                      : 'Real Play Age Signals API. Returns whatever Play reports '
+                            'for this account and region, which may be nothing '
+                            'outside an applicable jurisdiction.',
+                ),
+              ),
             Text(
               Platform.isAndroid
-                  ? 'Note: This example uses mock data (useMockData: true) for testing. You can test different scenarios using the chips below.'
+                  ? 'Tip: mock mode never contacts Play, so it cannot tell you what the real API returns.'
                   : 'Note: DeclaredAgeRange requires iOS 26.0 or later. On older iOS versions, you will receive an UnsupportedPlatformException.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,

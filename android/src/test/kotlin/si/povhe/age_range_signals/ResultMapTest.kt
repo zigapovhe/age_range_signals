@@ -188,4 +188,43 @@ class ResultMapTest {
             plugin.deriveStatus(AgeRangeSource.TIER_D, SignificantChangeStatus.APPROVED, null, 18),
         )
     }
+
+    @Test
+    fun deriveStatus_unspecifiedTierIsUnknown() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertEquals(
+            "unknown",
+            plugin.deriveStatus(AgeRangeSource.UNSPECIFIED, SignificantChangeStatus.APPROVED, 18, 18),
+        )
+    }
+
+    @Test
+    fun deriveStatus_unrecognisedTierWithBoundsStillJudgesByAge() {
+        // A tier a future library version adds must not collapse to `unknown`
+        // while a real age band is available.
+        val plugin = AgeRangeSignalsPlugin()
+        val futureTier = 99
+
+        assertEquals(
+            "verified",
+            plugin.deriveStatus(futureTier, SignificantChangeStatus.APPROVED, 18, 18),
+        )
+        assertEquals(
+            "supervised",
+            plugin.deriveStatus(futureTier, SignificantChangeStatus.APPROVED, 13, 18),
+        )
+    }
+
+    @Test
+    fun deriveStatus_guardianAttestedAdultIsVerifiedLikeOnIos() {
+        // Supervision is reported through `ageRangeSource`, not by overriding
+        // the verdict. iOS returns `verified` for the same user.
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertEquals(
+            "verified",
+            plugin.deriveStatus(AgeRangeSource.TIER_B, SignificantChangeStatus.APPROVED, 18, 18),
+        )
+    }
 }

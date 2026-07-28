@@ -71,9 +71,11 @@ class AgeSignalsResult {
 
   /// How Google Play established the age range (Android only).
   ///
-  /// The [status] is derived from this tier together with
-  /// [significantChangeStatus]. Null on iOS, and null on Android when age
-  /// signals are not shared or verification is still required.
+  /// [status] is not derived from this tier: the verdict comes from the
+  /// reported age band measured against your highest configured age gate.
+  /// This says how much assurance backs that band. Null on iOS, and null on
+  /// Android when age signals are not shared or verification is still
+  /// required.
   final AgeRangeSource? ageRangeSource;
 
   /// Parent approval state for significant app changes (Android only).
@@ -245,11 +247,14 @@ class AgeSignalsResult {
 
 /// Status of the age verification check.
 enum AgeSignalsStatus {
-  /// User is verified as being over the age threshold.
+  /// The reported age range starts at or above your highest configured age
+  /// gate.
   ///
-  /// On Android, the age range was verified ([AgeRangeSource.tierC] or
-  /// [AgeRangeSource.tierD]). On iOS, this is determined by the declared age
-  /// range relative to the configured age gates (e.g., highest gate met).
+  /// Both platforms apply the same rule; Android falls back to 18 when
+  /// `initialize()` is called without gates. Any tier can reach this, so a
+  /// self-declared band clears the gate just as an ID-verified one does.
+  /// Check [AgeSignalsResult.ageRangeSource] if you need a minimum assurance
+  /// level.
   verified,
 
   /// User's age could not be determined.
@@ -268,12 +273,12 @@ enum AgeSignalsStatus {
   /// `AgeSignalsAccessStatus.notShared` from the access request instead.
   declined,
 
-  /// User is under parental supervision or below age threshold.
+  /// The reported age range falls below your highest configured age gate.
   ///
-  /// On Android, the age range comes from a parent-managed account
-  /// ([AgeRangeSource.tierB]) with no pending or declined significant
-  /// change. On iOS, this value is returned when the declared age range
-  /// does not meet the configured gates.
+  /// Both platforms apply the same rule. This is the age verdict, not the
+  /// supervision relationship: any tier can reach it, so read
+  /// [AgeSignalsResult.ageRangeSource] to tell a parent-managed account from
+  /// an unsupervised one.
   supervised,
 
   /// User is supervised and a parent approval is pending (Android only).
@@ -331,10 +336,13 @@ enum AgeRangeSource {
 
   /// The age range comes from a parent- or guardian-managed account.
   ///
-  /// This is the supervised family: [AgeSignalsResult.status] reports
-  /// [AgeSignalsStatus.supervised], [AgeSignalsStatus.supervisedApprovalPending],
-  /// or [AgeSignalsStatus.supervisedApprovalDenied] depending on
-  /// [AgeSignalsResult.significantChangeStatus].
+  /// A pending or declined [AgeSignalsResult.significantChangeStatus] reports
+  /// [AgeSignalsStatus.supervisedApprovalPending] or
+  /// [AgeSignalsStatus.supervisedApprovalDenied] whatever the age, because an
+  /// outstanding guardian decision is actionable either way. Otherwise the
+  /// verdict comes from the age band like any other tier, so a supervised
+  /// account whose attested band clears your gate reports
+  /// [AgeSignalsStatus.verified].
   tierB,
 
   /// Verified via credit card, email, selfie, government ID, or tax ID.
