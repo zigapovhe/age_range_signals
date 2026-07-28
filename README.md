@@ -140,9 +140,9 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 
 ### Basic Example
 
-Enough to paste into an app and run. `initialize()` must be called before
-`checkAgeSignals()`; on iOS the age gates are required, on Android they are
-ignored.
+Enough to paste into an app and run. Call `initialize()` before
+`checkAgeSignals()` on both platforms: iOS requires the age gates, and
+Android uses your highest gate as the bar for `verified`.
 
 ```dart
 import 'package:age_range_signals/age_range_signals.dart';
