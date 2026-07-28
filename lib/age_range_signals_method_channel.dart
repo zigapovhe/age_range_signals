@@ -1,3 +1,12 @@
+/// The default [AgeRangeSignalsPlatform] implementation, built on a method
+/// channel.
+///
+/// Application code should import
+/// `package:age_range_signals/age_range_signals.dart` instead. This library is
+/// public only so the plugin can register itself and so tests can reach the
+/// channel.
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +18,13 @@ import 'src/models/age_signals_result.dart';
 
 /// An implementation of [AgeRangeSignalsPlatform] that uses method channels.
 class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
+  /// Creates a [MethodChannelAgeRangeSignals].
+  ///
+  /// One is already registered as the default
+  /// [AgeRangeSignalsPlatform.instance], so constructing this directly is only
+  /// useful when swapping in a subclass for tests.
+  MethodChannelAgeRangeSignals();
+
   /// The method channel used to interact with the native platform.
   @visibleForTesting
   final methodChannel = const MethodChannel('age_range_signals');

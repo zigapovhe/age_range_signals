@@ -1,3 +1,10 @@
+/// Age verification for Flutter, backed by the platform's own age signals.
+///
+/// This is the entry point most apps need. Import it and call
+/// [AgeRangeSignals.instance]; the method channel and platform interface
+/// libraries are plumbing and should not be imported directly.
+library;
+
 import 'age_range_signals_platform_interface.dart';
 import 'src/exceptions/age_signals_exception.dart';
 import 'src/models/age_regulatory_feature.dart';

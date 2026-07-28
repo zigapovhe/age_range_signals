@@ -1,3 +1,11 @@
+/// The platform interface that federated implementations of
+/// `age_range_signals` extend.
+///
+/// Application code should import `package:age_range_signals/age_range_signals.dart`
+/// instead. This library exists so alternative platform implementations, and
+/// tests that need to stub the plugin, can hook into it.
+library;
+
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'age_range_signals_method_channel.dart';
@@ -6,6 +14,15 @@ import 'src/models/age_regulatory_feature.dart';
 import 'src/models/age_signals_result.dart';
 import 'src/models/age_signals_mock_data.dart';
 
+/// The interface every `age_range_signals` platform implementation extends.
+///
+/// The default implementation, [MethodChannelAgeRangeSignals], talks to the
+/// Play Age Signals API on Android and the DeclaredAgeRange API on iOS over a
+/// method channel. Replace [instance] to stub the plugin in tests.
+///
+/// Do not call this from application code. [instance] bypasses the argument
+/// validation performed by the public `AgeRangeSignals` wrapper, so use that
+/// instead.
 abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// Constructs a AgeRangeSignalsPlatform.
   AgeRangeSignalsPlatform() : super(token: _token);
