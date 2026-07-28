@@ -1,0 +1,40 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "age_range_signals",
+  "description": "Flutter plugin for age verification, wrapping the Google Play Age Signals API on Android and Apple's DeclaredAgeRange API on iOS 26+.",
+  "branch": "main",
+  "excludeFolders": [
+    "android",
+    "ios",
+    "test",
+    "example/android",
+    "example/ios",
+    "example/test",
+    "example/integration_test",
+    ".github",
+    "**/build",
+    "**/.dart_tool"
+  ],
+  "excludeFiles": [
+    "example/README.md"
+  ],
+  "previousVersions": [
+    { "tag": "0.6.2", "title": "0.6.x" },
+    { "tag": "0.5.1", "title": "0.5.x" }
+  ],
+  "rules": [
+    "This plugin reports age signals that the OS already holds. It is not identity verification, document scanning, or KYC, and it never returns a date of birth. Only an age range or bracket status is available.",
+    "Access the plugin through the singleton `AgeRangeSignals.instance`. There is no public constructor.",
+    "Import only `package:age_range_signals/age_range_signals.dart`. The `age_range_signals_method_channel` and `age_range_signals_platform_interface` libraries are federated-plugin plumbing, not application API. Calling `AgeRangeSignalsPlatform.instance` directly skips the argument validation in the public wrapper. Subclass `AgeRangeSignalsPlatform` only to mock the plugin in tests.",
+    "Always `await AgeRangeSignals.instance.initialize(...)` before calling `checkAgeSignals()`. Skipping it throws `NotInitializedException`.",
+    "On iOS, `initialize(ageGates: [...])` is required. Apple accepts 1 to 3 gates and requires at least 2 years between consecutive gates, so `[13, 16, 18]` is valid and `[13, 14]` is rejected by the OS. On Android `ageGates` is optional and ignored.",
+    "`checkAgeSignals()` returns an `AgeSignalsResult` whose `status` is one of `verified`, `supervised`, `declined`, or `unknown`. Switch on all four. There is no `notAvailable` status; platform unavailability is thrown as `UnsupportedPlatformException`, not returned as a status.",
+    "`ageLower` and `ageUpper` are nullable. They are populated on iOS only when the user consents to share, and on Android only for supervised users. Never assume they are non-null after a `verified` status.",
+    "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real iOS 26.2+ device.",
+    "Catch `AgeSignalsException` as the base type. Subclasses are `ApiNotAvailableException`, `UnsupportedPlatformException`, `NotInitializedException`, `MissingEntitlementException`, `ApiErrorException`, `PlayServicesException`, `NetworkErrorException`, `UserNotSignedInException`, and `UserCancelledException`.",
+    "`getRequiredRegulatoryFeatures()` needs iOS 26.4+ and an app built with Xcode 26.4+. It returns an empty set on Android and throws `UnsupportedPlatformException` on older iOS, so an empty set unambiguously means no regulatory action is required rather than unknown.",
+    "`showSignificantUpdateAcknowledgment()` throws `UnsupportedPlatformException` on Android and on iOS below 26.4 by design. Apple reports user dismissal using the same error as genuine unavailability, so do not treat `ApiNotAvailableException` as proof the sheet was never shown.",
+    "Platform floors: Android API 23+ with Google Play services, iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features. iOS also requires the DeclaredAgeRange entitlement, and a missing or unapproved one throws `MissingEntitlementException`.",
+    "Google Play policy allows Age Signals data to be used only to deliver age-appropriate experiences. Never route it into advertising, marketing, user profiling, or analytics. Doing so risks API termination and app suspension, so do not suggest logging the result to an analytics SDK."
+  ]
+}
