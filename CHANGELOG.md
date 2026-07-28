@@ -1,3 +1,13 @@
+## 0.8.0
+
+* **Android**: Updated `com.google.android.play:age-signals` from 0.0.3 to 0.0.4, which removes the library's `userStatus` and replaces it with `ageRangeSource` + `significantChangeStatus`. The plugin derives the existing `AgeSignalsStatus` vocabulary from the new pair (Google's release notes name it as the official replacement), so `status`-based code keeps working unchanged.
+* **Android**: Added `requestAgeSignalsAccess()`, the first half of the 0.0.4 two-call flow. It may show Play's in-app age sharing prompt (the plugin now implements `ActivityAware` to present it) and returns an `AgeSignalsAccessStatus`: `shared`, `notShared` (a decline is not an error), or `verificationRequired` (mandatory-verification regions; the user verifies in the Play Store). Call it before `checkAgeSignals()` and only read signals on `shared`. On iOS it returns `shared` without showing anything - Apple gathers consent inside `checkAgeSignals()` itself - so one call sequence works on both platforms.
+* **Android**: `AgeSignalsResult` now exposes `ageRangeSource` (tierA self-declared, tierB parent-managed, tierC/tierD verified) and `significantChangeStatus` (approved/pending/declined, supervised users).
+* **Breaking**: Renamed `AgeSignalsResult.mostRecentApprovalDate` to `significantChangeApprovalDate`, following the same rename in age-signals 0.0.4 (it is the effective date of the most recently approved significant change). The `AgeSignalsMockData` field and channel key are renamed in lockstep.
+* **Android**: `AgeSignalsMockData` gained `accessStatus` (mock outcome of the access request, defaults to `shared`) and explicit `ageRangeSource` / `significantChangeStatus` overrides; when omitted, both are derived from `status`, so existing mocks round-trip unchanged. Explicit `ageLower`/`ageUpper` are now honored for verified mocks too, matching the real API's open-ended 18+ band (`ageLower: 18, ageUpper: null`).
+* **Docs**: Documented the two-call architecture, the new enums, `installId`'s role in revoked app approvals (Play Console CSV, 90-day retention), and Play's prompt-suppression behavior after repeated dismissals.
+* **Example**: Added a "Request Age Signals Access" step, an "Access Not Shared" scenario chip, and result rows for the new fields.
+
 ## 0.7.0
 
 * **iOS**: Added `getRequiredRegulatoryFeatures()` (iOS 26.4+), which reports whether Apple requires the current user to share an age range and whether significant-change notification or parental consent applies (#31). Calls are guarded by a 10-second deadline. Throws `UnsupportedPlatformException` below iOS 26.4 (and in apps built with an SDK older than iOS 26.4) so an empty set always means Apple affirmatively reports nothing is required; on Android the set is always empty.
@@ -102,7 +112,7 @@
 ## 0.2.0
 
 * **Android**: ⚠️ **CRITICAL UPDATE** - Bumped Play Age Signals API library version to non-beta stable release `com.google.android.play:age-signals:0.0.1` (thanks to @rokarnus for reporting this in #5)
-  
+
 * **ACTION REQUIRED**: Users must upgrade to version 0.2.0 or higher before January 1, 2026
   * **Why**: From January 1, 2026, all beta versions (0.0.1-beta*) of the Play Age Signals API will throw exceptions
   * **Impact**: Apps using older versions of this plugin (with beta API) will stop working after January 1, 2026
