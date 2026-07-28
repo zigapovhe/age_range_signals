@@ -63,6 +63,31 @@ void main() {
       expect(mock.significantChangeApprovalDate, date);
     });
 
+    test('the new name wins over the old one in copyWith', () {
+      final newer = DateTime.utc(2026, 6, 1);
+      final result = const AgeSignalsResult(status: AgeSignalsStatus.supervised)
+          .copyWith(
+            significantChangeApprovalDate: newer,
+            mostRecentApprovalDate: date,
+          );
+
+      expect(result.significantChangeApprovalDate, newer);
+      // The alias getter must follow the copy, not the original.
+      expect(result.mostRecentApprovalDate, newer);
+    });
+
+    test('the new name wins over the old one in mock copyWith', () {
+      final newer = DateTime.utc(2026, 6, 1);
+      final mock = const AgeSignalsMockData(status: AgeSignalsStatus.supervised)
+          .copyWith(
+            significantChangeApprovalDate: newer,
+            mostRecentApprovalDate: date,
+          );
+
+      expect(mock.significantChangeApprovalDate, newer);
+      expect(mock.mostRecentApprovalDate, newer);
+    });
+
     test('fromMap still accepts a result persisted under 0.7.x', () {
       final restored = AgeSignalsResult.fromMap({
         'status': 'supervised',

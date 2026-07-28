@@ -57,9 +57,13 @@ class AgeSignalsMockData {
   /// Can be null for verified status.
   final int? ageUpper;
 
-  /// The mock source of the age declaration.
-  ///
-  /// Not used on any platform currently (reserved for future use).
+  /// Unused. `AgeDeclarationSource` is an iOS concept, and mock data is
+  /// Android only, so nothing reads this. Use [ageRangeSource] to select the
+  /// Play tier the fake manager reports.
+  @Deprecated(
+    'Unused on every platform. Use ageRangeSource to select the Play tier. '
+    'This field will be removed in a future release.',
+  )
   final AgeDeclarationSource? source;
 
   /// Mock unique identifier for this app installation (Android only).

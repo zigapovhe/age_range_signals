@@ -343,7 +343,8 @@ try {
 If your app is strictly 18+, set a single gate at 18 so the API classifies the user above/below that threshold.
 
 ```dart
-// iOS only: one gate at 18
+// One gate at 18. Pass it on both platforms: iOS requires it, and Android
+// uses your highest gate as the bar for `verified`.
 await AgeRangeSignals.instance.initialize(ageGates: [18]);
 
 final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
@@ -354,8 +355,17 @@ if (access != AgeSignalsAccessStatus.shared) {
 }
 
 final result = await AgeRangeSignals.instance.checkAgeSignals();
-if (result.status == AgeSignalsStatus.verified) {
-  // User meets 18+ requirement
+
+// `verified` only says the band clears your gate. Any tier can reach it,
+// including a self-declaration, so a strictly 18+ app should decide what
+// assurance it will accept rather than leaving it implicit.
+const acceptable = {AgeRangeSource.tierC, AgeRangeSource.tierD};
+final assuranceOk =
+    result.ageRangeSource == null || // iOS: Apple reports no tier
+    acceptable.contains(result.ageRangeSource);
+
+if (result.status == AgeSignalsStatus.verified && assuranceOk) {
+  // User meets 18+ requirement at an assurance level you accept
 } else {
   // Block or show appropriate messaging
 }
@@ -445,7 +455,7 @@ AgeSignalsMockData({
 - `AgeDeclarationSource? source` - iOS-flavoured declaration source. Not read on Android; use `ageRangeSource` to select the Play tier
 - `String? installId` - Mock installation ID (Android only)
 - `AgeSignalsAccessStatus? accessStatus` - Mock outcome of `requestAgeSignalsAccess()`; defaults to `shared` when null
-- `AgeRangeSource? ageRangeSource` - Explicit mock tier; when null it is derived from `status` (verified maps to `tierC`, declared to `tierA`, the supervised family to `tierB`). The result's `status` is always re-derived from the resolved tier and change status, exactly as with real API responses, so an explicit tier wins over a contradictory `status`
+- `AgeRangeSource? ageRangeSource` - Explicit mock tier; when null it is derived from `status` (verified maps to `tierC`, declared to `tierA`, the supervised family to `tierB`). The result's `status` is always re-derived from the resulting age band, exactly as with real API responses, so a mock whose band contradicts its `status` comes back with the band's verdict. `status: declared` therefore returns `supervised` on its default 13-15 band; give it `ageLower: 18` to model a self-declared adult
 - `SignificantChangeStatus? significantChangeStatus` - Explicit mock change status; when null it is derived from `status` (`supervisedApprovalPending` maps to `pending`, `supervisedApprovalDenied` to `declined`)
 - `DateTime? significantChangeApprovalDate` - Mock significant change approval date (Android only)
 
