@@ -15,6 +15,8 @@ void main() {
           switch (methodCall.method) {
             case 'initialize':
               return null;
+            case 'requestAgeSignalsAccess':
+              return 'shared';
             case 'checkAgeSignals':
               // Mock VERIFIED user (18+) - age values should be null
               return {
@@ -53,6 +55,56 @@ void main() {
       result.installId,
       null,
     ); // VERIFIED users typically don't have installId
+  });
+
+  test('requestAgeSignalsAccess parses the returned status', () async {
+    expect(
+      await platform.requestAgeSignalsAccess(),
+      AgeSignalsAccessStatus.shared,
+    );
+  });
+
+  test(
+    'requestAgeSignalsAccess maps unrecognized statuses to unknown',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            return 'somethingNew';
+          });
+
+      expect(
+        await platform.requestAgeSignalsAccess(),
+        AgeSignalsAccessStatus.unknown,
+      );
+    },
+  );
+
+  test('requestAgeSignalsAccess handles a missing activity', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          throw PlatformException(
+            code: 'PRESENTATION_CONTEXT_UNAVAILABLE',
+            message:
+                'No foreground activity to present the age sharing prompt on',
+          );
+        });
+
+    expect(
+      () => platform.requestAgeSignalsAccess(),
+      throwsA(isA<ApiErrorException>()),
+    );
+  });
+
+  test('requestAgeSignalsAccess rejects a null platform result', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          return null;
+        });
+
+    expect(
+      () => platform.requestAgeSignalsAccess(),
+      throwsA(isA<AgeSignalsException>()),
+    );
   });
 
   test('checkAgeSignals returns supervised result with age ranges', () async {
@@ -146,7 +198,7 @@ void main() {
           throw PlatformException(
             code: 'SDK_VERSION_OUTDATED',
             message: 'Google Play Services version is outdated',
-            details: 'Requires version 0.0.3 or higher',
+            details: 'Requires version 0.0.4 or higher',
           );
         });
 

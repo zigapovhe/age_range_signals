@@ -8,6 +8,7 @@ class MockAgeRangeSignalsPlatform extends AgeRangeSignalsPlatform
     with MockPlatformInterfaceMixin {
   bool _initialized = false;
   List<int>? _ageGates;
+  AgeSignalsAccessStatus _accessStatus = AgeSignalsAccessStatus.shared;
 
   @override
   Future<void> initialize({
@@ -18,6 +19,10 @@ class MockAgeRangeSignalsPlatform extends AgeRangeSignalsPlatform
     _initialized = true;
     _ageGates = ageGates;
   }
+
+  @override
+  Future<AgeSignalsAccessStatus> requestAgeSignalsAccess() async =>
+      _accessStatus;
 
   @override
   Future<AgeSignalsResult> checkAgeSignals() async {
@@ -140,6 +145,19 @@ void main() {
       expect(
         () => AgeRangeSignals.instance.checkAgeSignals(),
         throwsA(isA<NotInitializedException>()),
+      );
+    });
+
+    test('requestAgeSignalsAccess delegates to the platform', () async {
+      expect(
+        await AgeRangeSignals.instance.requestAgeSignalsAccess(),
+        AgeSignalsAccessStatus.shared,
+      );
+
+      mockPlatform._accessStatus = AgeSignalsAccessStatus.notShared;
+      expect(
+        await AgeRangeSignals.instance.requestAgeSignalsAccess(),
+        AgeSignalsAccessStatus.notShared,
       );
     });
   });

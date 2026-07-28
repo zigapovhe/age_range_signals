@@ -1,3 +1,4 @@
+import 'age_signals_access_status.dart';
 import 'age_signals_result.dart';
 
 /// Configuration for mock/test data used when [useMockData] is true.
@@ -29,7 +30,10 @@ class AgeSignalsMockData {
     this.ageUpper,
     this.source,
     this.installId,
-    this.mostRecentApprovalDate,
+    this.accessStatus,
+    this.ageRangeSource,
+    this.significantChangeStatus,
+    this.significantChangeApprovalDate,
   });
 
   /// The mock verification status to return.
@@ -57,11 +61,37 @@ class AgeSignalsMockData {
   /// Only used when testing Android scenarios.
   final String? installId;
 
-  /// Mock guardian approval date (Android only).
+  /// The mock outcome of `requestAgeSignalsAccess()` (Android only).
   ///
-  /// Maps to the `mostRecentApprovalDate` reported by the Play Age Signals
-  /// API for supervised users.
-  final DateTime? mostRecentApprovalDate;
+  /// Defaults to [AgeSignalsAccessStatus.shared] when null, so mocked
+  /// flows proceed straight into `checkAgeSignals()`. Set
+  /// [AgeSignalsAccessStatus.notShared] or
+  /// [AgeSignalsAccessStatus.verificationRequired] to exercise the paths
+  /// where no age signals may be requested.
+  final AgeSignalsAccessStatus? accessStatus;
+
+  /// Explicit mock [AgeRangeSource] tier (Android only).
+  ///
+  /// When null, the tier is derived from [status] (verified maps to tierC,
+  /// declared to tierA, the supervised family to tierB). The result's
+  /// status is always re-derived from the resolved tier and change status,
+  /// exactly as with real API responses, so an explicit tier wins over a
+  /// contradictory [status]. Set it to pin a specific tier, e.g. verified
+  /// via [AgeRangeSource.tierD].
+  final AgeRangeSource? ageRangeSource;
+
+  /// Explicit mock [SignificantChangeStatus] (Android only).
+  ///
+  /// When null, it is derived from [status]
+  /// (supervisedApprovalPending maps to pending, supervisedApprovalDenied
+  /// to declined, otherwise unset).
+  final SignificantChangeStatus? significantChangeStatus;
+
+  /// Mock significant change approval date (Android only).
+  ///
+  /// Maps to the `significantChangeApprovalDate` reported by the Play Age
+  /// Signals API for supervised users.
+  final DateTime? significantChangeApprovalDate;
 
   /// Converts this mock data to a map for platform channel.
   Map<String, dynamic> toMap() {
@@ -71,7 +101,11 @@ class AgeSignalsMockData {
       'ageUpper': ageUpper,
       'source': source?.name,
       'installId': installId,
-      'mostRecentApprovalDate': mostRecentApprovalDate?.millisecondsSinceEpoch,
+      'accessStatus': accessStatus?.name,
+      'ageRangeSource': ageRangeSource?.name,
+      'significantChangeStatus': significantChangeStatus?.name,
+      'significantChangeApprovalDate':
+          significantChangeApprovalDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -82,7 +116,10 @@ class AgeSignalsMockData {
     int? ageUpper,
     AgeDeclarationSource? source,
     String? installId,
-    DateTime? mostRecentApprovalDate,
+    AgeSignalsAccessStatus? accessStatus,
+    AgeRangeSource? ageRangeSource,
+    SignificantChangeStatus? significantChangeStatus,
+    DateTime? significantChangeApprovalDate,
   }) {
     return AgeSignalsMockData(
       status: status ?? this.status,
@@ -90,8 +127,12 @@ class AgeSignalsMockData {
       ageUpper: ageUpper ?? this.ageUpper,
       source: source ?? this.source,
       installId: installId ?? this.installId,
-      mostRecentApprovalDate:
-          mostRecentApprovalDate ?? this.mostRecentApprovalDate,
+      accessStatus: accessStatus ?? this.accessStatus,
+      ageRangeSource: ageRangeSource ?? this.ageRangeSource,
+      significantChangeStatus:
+          significantChangeStatus ?? this.significantChangeStatus,
+      significantChangeApprovalDate:
+          significantChangeApprovalDate ?? this.significantChangeApprovalDate,
     );
   }
 
@@ -99,7 +140,9 @@ class AgeSignalsMockData {
   String toString() {
     return 'AgeSignalsMockData(status: $status, ageLower: $ageLower, '
         'ageUpper: $ageUpper, source: $source, installId: $installId, '
-        'mostRecentApprovalDate: $mostRecentApprovalDate)';
+        'accessStatus: $accessStatus, ageRangeSource: $ageRangeSource, '
+        'significantChangeStatus: $significantChangeStatus, '
+        'significantChangeApprovalDate: $significantChangeApprovalDate)';
   }
 
   @override
@@ -112,8 +155,11 @@ class AgeSignalsMockData {
         other.ageUpper == ageUpper &&
         other.source == source &&
         other.installId == installId &&
-        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
-            mostRecentApprovalDate?.millisecondsSinceEpoch;
+        other.accessStatus == accessStatus &&
+        other.ageRangeSource == ageRangeSource &&
+        other.significantChangeStatus == significantChangeStatus &&
+        other.significantChangeApprovalDate?.millisecondsSinceEpoch ==
+            significantChangeApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
@@ -124,7 +170,10 @@ class AgeSignalsMockData {
       ageUpper,
       source,
       installId,
-      mostRecentApprovalDate?.millisecondsSinceEpoch,
+      accessStatus,
+      ageRangeSource,
+      significantChangeStatus,
+      significantChangeApprovalDate?.millisecondsSinceEpoch,
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'age_range_signals_method_channel.dart';
 import 'src/exceptions/age_signals_exception.dart';
 import 'src/models/age_regulatory_feature.dart';
+import 'src/models/age_signals_access_status.dart';
 import 'src/models/age_signals_result.dart';
 import 'src/models/age_signals_mock_data.dart';
 
@@ -61,6 +62,19 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
     AgeSignalsMockData? mockData,
   }) {
     throw UnimplementedError('initialize() has not been implemented.');
+  }
+
+  /// Requests access to the current user's age signals (Android).
+  ///
+  /// May show Google Play's in-app age sharing prompt. Returns
+  /// [AgeSignalsAccessStatus.shared] on iOS, where consent is gathered by
+  /// [checkAgeSignals] itself.
+  ///
+  /// Throws [AgeSignalsException] if an error occurs during the request.
+  Future<AgeSignalsAccessStatus> requestAgeSignalsAccess() {
+    throw UnimplementedError(
+      'requestAgeSignalsAccess() has not been implemented.',
+    );
   }
 
   /// Checks the age signals for the current user.

@@ -1,23 +1,31 @@
 package si.povhe.age_range_signals
 
+import android.app.Activity
 import android.content.Context
+import com.google.android.play.agesignals.AgeSignalsAccessRequest
+import com.google.android.play.agesignals.AgeSignalsAccessResult
 import com.google.android.play.agesignals.AgeSignalsManager
 import com.google.android.play.agesignals.AgeSignalsManagerFactory
 import com.google.android.play.agesignals.AgeSignalsRequest
 import com.google.android.play.agesignals.AgeSignalsException
 import com.google.android.play.agesignals.AgeSignalsResult
-import com.google.android.play.agesignals.model.AgeSignalsVerificationStatus
+import com.google.android.play.agesignals.model.AgeRangeSource
+import com.google.android.play.agesignals.model.AgeSignalsStatus
+import com.google.android.play.agesignals.model.SignificantChangeStatus
 import com.google.android.play.agesignals.testing.FakeAgeSignalsManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.util.Date
 
-class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
+class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
+    private var activity: Activity? = null
     private var ageSignalsManager: AgeSignalsManager? = null
     private var useFakeManager = false
     private var mockData: Map<String, Any?>? = null
@@ -40,6 +48,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
     private fun createFakeManager(): AgeSignalsManager {
         val fakeManager = FakeAgeSignalsManager()
         fakeManager.setNextAgeSignalsResult(buildMockResult(mockData))
+        fakeManager.setNextAgeSignalsAccessResult(buildMockAccessResult(mockData))
         return fakeManager
     }
 
@@ -47,6 +56,13 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
      * Builds the [AgeSignalsResult] returned by the fake manager from the optional
      * mock data map. Extracted from [createFakeManager] so the mapping logic is
      * unit-testable without the async Task layer.
+     *
+     * The mock `status` string is translated into the [AgeRangeSource] tier and
+     * [SignificantChangeStatus] pair that [resultToMap] derives that status back
+     * from, so mocked scenarios round-trip unchanged. Explicit `ageRangeSource` /
+     * `significantChangeStatus` entries win over the derived pair, for tests
+     * that target a specific tier (e.g. verified via tierD rather than the
+     * default tierC).
      *
      * IMPORTANT: Age ranges are determined by Google Play's parental control settings,
      * NOT by the app's configured age gates. Android ignores the ageGates parameter -
@@ -57,69 +73,109 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
         // custom mock data is supplied.
         val statusString = mockDataMap?.get("status") as? String ?: "supervised"
 
-        val userStatus = when (statusString) {
-            "verified" -> AgeSignalsVerificationStatus.VERIFIED
-            "supervised" -> AgeSignalsVerificationStatus.SUPERVISED
-            "supervisedApprovalPending" -> AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING
-            "supervisedApprovalDenied" -> AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED
-            "declared" -> AgeSignalsVerificationStatus.DECLARED
-            "unknown" -> AgeSignalsVerificationStatus.UNKNOWN
-            else -> AgeSignalsVerificationStatus.SUPERVISED
+        val derivedSource = when (statusString) {
+            "verified" -> AgeRangeSource.TIER_C
+            "declared" -> AgeRangeSource.TIER_A
+            "unknown" -> null
+            else -> AgeRangeSource.TIER_B
+        }
+        val derivedChangeStatus = when (statusString) {
+            "supervisedApprovalPending" -> SignificantChangeStatus.PENDING
+            "supervisedApprovalDenied" -> SignificantChangeStatus.DECLINED
+            else -> null
         }
 
-        val resultBuilder = AgeSignalsResult.builder().setUserStatus(userStatus)
+        val ageRangeSource =
+            ageRangeSourceFromName(mockDataMap?.get("ageRangeSource") as? String) ?: derivedSource
+        val changeStatus =
+            significantChangeStatusFromName(mockDataMap?.get("significantChangeStatus") as? String)
+                ?: derivedChangeStatus
 
-        // Age range only applies to supervised-like states (verified is 18+, no range).
-        if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
-            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
-            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED ||
-            userStatus == AgeSignalsVerificationStatus.DECLARED) {
+        val resultBuilder = AgeSignalsResult.builder()
+        ageRangeSource?.let { resultBuilder.setAgeRangeSource(it) }
+        changeStatus?.let { resultBuilder.setSignificantChangeStatus(it) }
+
+        // Explicit mock bounds apply to any tier: a real verified response
+        // carries the open-ended 18+ band. The 13-15 default is reserved for
+        // the declared and supervised tiers, where a band is always present,
+        // so verified mocks without explicit bounds keep their documented
+        // null bounds.
+        if (ageRangeSource != null) {
             val ageLowerRaw = mockDataMap?.get("ageLower") as? Int
-            resultBuilder.setAgeLower(ageLowerRaw ?: 13)
-
-            // Two cases produce a null ageUpper, distinguished by whether an explicit
-            // lower bound was given (the only signal that survives the Dart->map
-            // boundary, since toMap always includes the ageUpper key as null):
-            //  - explicit ageLower + omitted ageUpper -> open-ended top bucket
-            //    (e.g. ageLower=18, ageUpper=null), intentionally left unset
-            //  - no ageLower (no mock data at all, or a partial mock omitting both
-            //    bounds) -> apply the default supervised band (13-15)
             val ageUpperRaw = mockDataMap?.get("ageUpper") as? Int
-            if (ageUpperRaw != null) {
-                resultBuilder.setAgeUpper(ageUpperRaw)
-            } else if (ageLowerRaw == null) {
-                resultBuilder.setAgeUpper(15)
+            if (ageLowerRaw != null) {
+                resultBuilder.setAgeLower(ageLowerRaw)
+
+                // An explicit lower bound with an omitted upper bound is the
+                // intentional open-ended top bucket (e.g. ageLower=18,
+                // ageUpper=null); ageUpper stays unset.
+                if (ageUpperRaw != null) {
+                    resultBuilder.setAgeUpper(ageUpperRaw)
+                }
+            } else if (ageRangeSource == AgeRangeSource.TIER_A ||
+                ageRangeSource == AgeRangeSource.TIER_B
+            ) {
+                // No explicit lower bound (no mock data at all, or a partial
+                // mock omitting both bounds; toMap always serializes the keys,
+                // so both arrive as null): apply the default supervised band.
+                resultBuilder.setAgeLower(13)
+                resultBuilder.setAgeUpper(ageUpperRaw ?: 15)
             }
         }
 
-        // installId is set for supervised statuses, not for declared/verified.
-        if (userStatus == AgeSignalsVerificationStatus.SUPERVISED ||
-            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING ||
-            userStatus == AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED) {
+        // installId is set for supervised installs, not for declared/verified.
+        if (ageRangeSource == AgeRangeSource.TIER_B) {
             val installId = mockDataMap?.get("installId") as? String ?: "test_install_id_12345"
             resultBuilder.setInstallId(installId)
         }
 
-        (mockDataMap?.get("mostRecentApprovalDate") as? Number)?.let {
-            resultBuilder.setMostRecentApprovalDate(Date(it.toLong()))
+        (mockDataMap?.get("significantChangeApprovalDate") as? Number)?.let {
+            resultBuilder.setSignificantChangeApprovalDate(Date(it.toLong()))
         }
 
         return resultBuilder.build()
     }
 
     /**
+     * Builds the [AgeSignalsAccessResult] the fake manager answers
+     * requestAgeSignalsAccess with. Defaults to SHARED so mocked flows
+     * proceed straight into checkAgeSignals; notShared and
+     * verificationRequired exercise the gated paths.
+     */
+    internal fun buildMockAccessResult(mockDataMap: Map<String, Any?>?): AgeSignalsAccessResult {
+        val status = when (mockDataMap?.get("accessStatus") as? String) {
+            "notShared" -> AgeSignalsStatus.NOT_SHARED
+            "verificationRequired" -> AgeSignalsStatus.VERIFICATION_REQUIRED
+            // UNSPECIFIED maps back to "unknown", so the unrecognized-state
+            // fallback can be mocked like every other outcome.
+            "unknown" -> AgeSignalsStatus.UNSPECIFIED
+            else -> AgeSignalsStatus.SHARED
+        }
+        return AgeSignalsAccessResult.builder().setAgeSignalsStatus(status).build()
+    }
+
+    /**
      * Maps a platform [AgeSignalsResult] to the channel map consumed by Dart.
      * Shared by the real and fake manager listeners so the two paths cannot
      * drift apart. iOS-only keys are present but always null on Android.
+     *
+     * The library carries no user status of its own, so the cross-platform
+     * `status` is derived here: parent-managed accounts (tierB) surface the
+     * supervised family, refined by a pending or declined significant change;
+     * tierA is Play's self-declared flow; tierC/tierD are verified.
      */
     internal fun resultToMap(ageSignalsResult: AgeSignalsResult): Map<String, Any?> {
-        val status = when (ageSignalsResult.userStatus()) {
-            AgeSignalsVerificationStatus.VERIFIED -> "verified"
-            AgeSignalsVerificationStatus.SUPERVISED -> "supervised"
-            AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_PENDING -> "supervisedApprovalPending"
-            AgeSignalsVerificationStatus.SUPERVISED_APPROVAL_DENIED -> "supervisedApprovalDenied"
-            AgeSignalsVerificationStatus.DECLARED -> "declared"
-            AgeSignalsVerificationStatus.UNKNOWN -> "unknown"
+        val ageRangeSource = ageSignalsResult.ageRangeSource()
+        val changeStatus = ageSignalsResult.significantChangeStatus()
+
+        val status = when (ageRangeSource) {
+            AgeRangeSource.TIER_A -> "declared"
+            AgeRangeSource.TIER_B -> when (changeStatus) {
+                SignificantChangeStatus.PENDING -> "supervisedApprovalPending"
+                SignificantChangeStatus.DECLINED -> "supervisedApprovalDenied"
+                else -> "supervised"
+            }
+            AgeRangeSource.TIER_C, AgeRangeSource.TIER_D -> "verified"
             else -> "unknown"
         }
 
@@ -128,10 +184,49 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
             "installId" to ageSignalsResult.installId(),
             "ageLower" to ageSignalsResult.ageLower(),
             "ageUpper" to ageSignalsResult.ageUpper(),
+            "ageRangeSource" to ageRangeSourceName(ageRangeSource),
+            "significantChangeStatus" to significantChangeStatusName(changeStatus),
             "source" to null,
             "activeParentalControls" to null,
-            "mostRecentApprovalDate" to ageSignalsResult.mostRecentApprovalDate()?.time
+            "significantChangeApprovalDate" to ageSignalsResult.significantChangeApprovalDate()?.time
         )
+    }
+
+    private fun ageRangeSourceFromName(name: String?): Int? = when (name) {
+        "tierA" -> AgeRangeSource.TIER_A
+        "tierB" -> AgeRangeSource.TIER_B
+        "tierC" -> AgeRangeSource.TIER_C
+        "tierD" -> AgeRangeSource.TIER_D
+        else -> null
+    }
+
+    private fun ageRangeSourceName(source: Int?): String? = when (source) {
+        AgeRangeSource.TIER_A -> "tierA"
+        AgeRangeSource.TIER_B -> "tierB"
+        AgeRangeSource.TIER_C -> "tierC"
+        AgeRangeSource.TIER_D -> "tierD"
+        else -> null
+    }
+
+    private fun significantChangeStatusFromName(name: String?): Int? = when (name) {
+        "approved" -> SignificantChangeStatus.APPROVED
+        "pending" -> SignificantChangeStatus.PENDING
+        "declined" -> SignificantChangeStatus.DECLINED
+        else -> null
+    }
+
+    private fun significantChangeStatusName(status: Int?): String? = when (status) {
+        SignificantChangeStatus.APPROVED -> "approved"
+        SignificantChangeStatus.PENDING -> "pending"
+        SignificantChangeStatus.DECLINED -> "declined"
+        else -> null
+    }
+
+    internal fun accessStatusName(status: Int?): String = when (status) {
+        AgeSignalsStatus.SHARED -> "shared"
+        AgeSignalsStatus.NOT_SHARED -> "notShared"
+        AgeSignalsStatus.VERIFICATION_REQUIRED -> "verificationRequired"
+        else -> "unknown"
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -142,6 +237,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 // Store mock data for use when creating fake manager
                 mockData = call.argument<Map<String, Any?>>("mockData")
                 result.success(null)
+            }
+            "requestAgeSignalsAccess" -> {
+                requestAgeSignalsAccess(result)
             }
             "checkAgeSignals" -> {
                 checkAgeSignals(result)
@@ -163,6 +261,46 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 result.notImplemented()
             }
         }
+    }
+
+    private fun requestAgeSignalsAccess(result: Result) {
+        // Play renders the age sharing prompt over the current activity, so
+        // the request cannot be built from the application context alone.
+        val activity = this.activity
+        if (activity == null) {
+            result.error(
+                "PRESENTATION_CONTEXT_UNAVAILABLE",
+                "No foreground activity to present the age sharing prompt on",
+                null
+            )
+            return
+        }
+
+        // Like checkAgeSignals, an explicit mock request runs against the
+        // fake manager even when the real API is unavailable.
+        val manager = if (useFakeManager) createFakeManager() else ageSignalsManager
+        if (manager == null) {
+            result.error(
+                "API_NOT_AVAILABLE",
+                "Age Signals API is not available on this device",
+                null
+            )
+            return
+        }
+
+        val request = AgeSignalsAccessRequest.builder().setActivity(activity).build()
+
+        manager.requestAgeSignalsAccess(request)
+            .addOnSuccessListener { accessResult ->
+                result.success(accessStatusName(accessResult.ageSignalsStatus()))
+            }
+            .addOnFailureListener { exception ->
+                result.error(
+                    channelErrorCode(exception),
+                    exception.message ?: "An error occurred while requesting age signals access",
+                    "Exception type: ${exception.javaClass.simpleName}"
+                )
+            }
     }
 
     private fun checkAgeSignals(result: Result) {
@@ -205,35 +343,55 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(resultToMap(ageSignalsResult))
             }
             .addOnFailureListener { exception ->
-                val errorMessage = exception.message ?: "An error occurred while checking age signals"
-                val errorCode = if (exception is AgeSignalsException) {
-                    when (exception.errorCode) {
-                        -1 -> "API_NOT_AVAILABLE"
-                        -2 -> "PLAY_SERVICES_ERROR"
-                        -3 -> "NETWORK_ERROR"
-                        -4 -> "PLAY_SERVICES_ERROR"
-                        -5 -> "PLAY_SERVICES_ERROR"
-                        -6 -> "PLAY_SERVICES_ERROR"
-                        -7 -> "PLAY_SERVICES_ERROR"
-                        -8 -> "API_ERROR"
-                        -9 -> "API_NOT_AVAILABLE"
-                        -10 -> "SDK_VERSION_OUTDATED"
-                        -100 -> "API_ERROR"
-                        else -> "API_ERROR"
-                    }
-                } else {
-                    "API_ERROR"
-                }
-
                 result.error(
-                    errorCode,
-                    errorMessage,
+                    channelErrorCode(exception),
+                    exception.message ?: "An error occurred while checking age signals",
                     "Exception type: ${exception.javaClass.simpleName}"
                 )
             }
     }
 
+    /**
+     * Maps a Play library failure onto the channel's error codes; the numeric
+     * values are the library's AgeSignalsErrorCode constants. A declined
+     * sharing prompt is not a failure - it arrives as a notShared access
+     * result, never through this path.
+     */
+    private fun channelErrorCode(exception: Exception): String {
+        if (exception !is AgeSignalsException) return "API_ERROR"
+        return when (exception.errorCode) {
+            -1 -> "API_NOT_AVAILABLE"
+            -2 -> "PLAY_SERVICES_ERROR"
+            -3 -> "NETWORK_ERROR"
+            -4 -> "PLAY_SERVICES_ERROR"
+            -5 -> "PLAY_SERVICES_ERROR"
+            -6 -> "PLAY_SERVICES_ERROR"
+            -7 -> "PLAY_SERVICES_ERROR"
+            -8 -> "API_ERROR"
+            -9 -> "API_NOT_AVAILABLE"
+            -10 -> "SDK_VERSION_OUTDATED"
+            -100 -> "API_ERROR"
+            else -> "API_ERROR"
+        }
+    }
+
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
     }
 }
