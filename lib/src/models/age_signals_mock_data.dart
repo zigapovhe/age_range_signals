@@ -29,27 +29,37 @@ class AgeSignalsMockData {
     this.ageUpper,
     this.source,
     this.installId,
-    this.mostRecentApprovalDate,
-  });
+    DateTime? significantChangeApprovalDate,
+    @Deprecated(
+      'Use significantChangeApprovalDate instead. '
+      'This alias will be removed in a future release.',
+    )
+    DateTime? mostRecentApprovalDate,
+  }) : significantChangeApprovalDate =
+           significantChangeApprovalDate ?? mostRecentApprovalDate;
 
   /// The mock verification status to return.
   final AgeSignalsStatus status;
 
   /// The mock lower bound of the user's age range.
   ///
-  /// Should be provided for supervised status on Android.
-  /// Can be null for verified status.
+  /// Play reports a band for adults too, so a `verified` mock defaults to 18
+  /// rather than null. Supply a value below your adult threshold and the mock
+  /// comes back as `supervised`, matching how the real API is interpreted.
   final int? ageLower;
 
   /// The mock upper bound of the user's age range.
   ///
-  /// Should be provided for supervised status on Android.
-  /// Can be null for verified status.
+  /// Null represents the open-ended top band (e.g. `ageLower: 18` with no
+  /// upper bound), which is what a `verified` mock produces by default.
   final int? ageUpper;
 
-  /// The mock source of the age declaration.
+  /// The mock assurance tier to report.
   ///
-  /// Not used on any platform currently (reserved for future use).
+  /// Android only, and load-bearing: it selects the Play `AgeRangeSource`
+  /// tier the fake manager returns, which in turn decides the derived
+  /// [AgeSignalsStatus] and whether `installId` is populated. When omitted,
+  /// the tier is inferred from [status]. Ignored on iOS.
   final AgeDeclarationSource? source;
 
   /// Mock unique identifier for this app installation (Android only).
@@ -59,9 +69,17 @@ class AgeSignalsMockData {
 
   /// Mock guardian approval date (Android only).
   ///
-  /// Maps to the `mostRecentApprovalDate` reported by the Play Age Signals
+  /// Maps to the `significantChangeApprovalDate` reported by the Play Age Signals
   /// API for supervised users.
-  final DateTime? mostRecentApprovalDate;
+  final DateTime? significantChangeApprovalDate;
+
+  /// Renamed to [significantChangeApprovalDate] in 0.8.0, following Play
+  /// age-signals 0.0.4, which renamed the underlying field.
+  @Deprecated(
+    'Use significantChangeApprovalDate instead. '
+    'This alias will be removed in a future release.',
+  )
+  DateTime? get mostRecentApprovalDate => significantChangeApprovalDate;
 
   /// Converts this mock data to a map for platform channel.
   Map<String, dynamic> toMap() {
@@ -71,7 +89,8 @@ class AgeSignalsMockData {
       'ageUpper': ageUpper,
       'source': source?.name,
       'installId': installId,
-      'mostRecentApprovalDate': mostRecentApprovalDate?.millisecondsSinceEpoch,
+      'significantChangeApprovalDate':
+          significantChangeApprovalDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -82,6 +101,11 @@ class AgeSignalsMockData {
     int? ageUpper,
     AgeDeclarationSource? source,
     String? installId,
+    DateTime? significantChangeApprovalDate,
+    @Deprecated(
+      'Use significantChangeApprovalDate instead. '
+      'This alias will be removed in a future release.',
+    )
     DateTime? mostRecentApprovalDate,
   }) {
     return AgeSignalsMockData(
@@ -90,8 +114,10 @@ class AgeSignalsMockData {
       ageUpper: ageUpper ?? this.ageUpper,
       source: source ?? this.source,
       installId: installId ?? this.installId,
-      mostRecentApprovalDate:
-          mostRecentApprovalDate ?? this.mostRecentApprovalDate,
+      significantChangeApprovalDate:
+          significantChangeApprovalDate ??
+          mostRecentApprovalDate ??
+          this.significantChangeApprovalDate,
     );
   }
 
@@ -99,7 +125,7 @@ class AgeSignalsMockData {
   String toString() {
     return 'AgeSignalsMockData(status: $status, ageLower: $ageLower, '
         'ageUpper: $ageUpper, source: $source, installId: $installId, '
-        'mostRecentApprovalDate: $mostRecentApprovalDate)';
+        'significantChangeApprovalDate: $significantChangeApprovalDate)';
   }
 
   @override
@@ -112,8 +138,8 @@ class AgeSignalsMockData {
         other.ageUpper == ageUpper &&
         other.source == source &&
         other.installId == installId &&
-        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
-            mostRecentApprovalDate?.millisecondsSinceEpoch;
+        other.significantChangeApprovalDate?.millisecondsSinceEpoch ==
+            significantChangeApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
@@ -124,7 +150,7 @@ class AgeSignalsMockData {
       ageUpper,
       source,
       installId,
-      mostRecentApprovalDate?.millisecondsSinceEpoch,
+      significantChangeApprovalDate?.millisecondsSinceEpoch,
     );
   }
 }

@@ -107,6 +107,12 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
           e.code,
           details,
         );
+      case 'MOCK_DATA_NOT_ALLOWED':
+        return MockDataNotAllowedException(
+          e.message ?? 'Mock data is only available in debuggable builds',
+          e.code,
+          details,
+        );
       case 'NOT_INITIALIZED':
         return NotInitializedException(
           e.message ?? 'Plugin not initialized. Call initialize() first.',

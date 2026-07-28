@@ -249,7 +249,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             "source": source as Any? ?? NSNull(),
             "installId": NSNull(),
             "activeParentalControls": activeParentalControls as Any? ?? NSNull(),
-            "mostRecentApprovalDate": NSNull()
+            "significantChangeApprovalDate": NSNull()
         ]
     }
 

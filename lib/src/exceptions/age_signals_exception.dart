@@ -81,3 +81,14 @@ class UserCancelledException extends AgeSignalsException {
   /// Creates a [UserCancelledException].
   const UserCancelledException(super.message, [super.code, super.details]);
 }
+
+/// Exception thrown when mock data is requested in a non-debuggable build.
+///
+/// `FakeAgeSignalsManager` forges age signals, so `useMockData` is refused
+/// outside debuggable builds rather than handing fabricated signals to real
+/// users. Build a debuggable variant if you need mock data on a release-like
+/// artifact. Android only.
+class MockDataNotAllowedException extends AgeSignalsException {
+  /// Creates a [MockDataNotAllowedException].
+  const MockDataNotAllowedException(super.message, [super.code, super.details]);
+}

@@ -14,8 +14,14 @@ class AgeSignalsResult {
     this.source,
     this.installId,
     this.activeParentalControls,
-    this.mostRecentApprovalDate,
-  });
+    DateTime? significantChangeApprovalDate,
+    @Deprecated(
+      'Use significantChangeApprovalDate instead. '
+      'This alias will be removed in a future release.',
+    )
+    DateTime? mostRecentApprovalDate,
+  }) : significantChangeApprovalDate =
+           significantChangeApprovalDate ?? mostRecentApprovalDate;
 
   /// The verification status returned by the platform.
   final AgeSignalsStatus status;
@@ -34,10 +40,16 @@ class AgeSignalsResult {
   /// May be null if user declined (iOS) or if not available from the platform.
   final int? ageUpper;
 
-  /// The source of the age declaration (iOS only).
+  /// How the age range was established, i.e. how much assurance it carries.
   ///
-  /// Indicates whether the age was self-declared or declared by a guardian.
-  /// Only available on iOS when user consents to share.
+  /// This is not the verdict; read [status] for that. On Android this is
+  /// Play's `AgeRangeSource` tier. It is null when nothing was shared and
+  /// when Play reports a tier this version does not recognise, and it can be
+  /// non-null even for [AgeSignalsStatus.unknown] (a shared user whose tier is
+  /// known but whose age band is missing). On iOS only
+  /// [AgeDeclarationSource.selfDeclared] and
+  /// [AgeDeclarationSource.guardianDeclared] occur, and only when the user
+  /// consents to share.
   final AgeDeclarationSource? source;
 
   /// Unique identifier for this app installation (Android only).
@@ -55,13 +67,21 @@ class AgeSignalsResult {
   /// when Apple reports none.
   final List<String>? activeParentalControls;
 
-  /// When a guardian most recently approved the age range (Android only).
+  /// When the current app version was approved for the user (Android only).
   ///
   /// Reported by the Play Age Signals API for supervised users. Useful for
   /// deciding whether a cached signal is fresh enough. Values parsed from
   /// the platform are UTC; equality compares the instant, not the time
   /// zone. Null on iOS and when Google does not report it.
-  final DateTime? mostRecentApprovalDate;
+  final DateTime? significantChangeApprovalDate;
+
+  /// Renamed to [significantChangeApprovalDate] in 0.8.0, following Play
+  /// age-signals 0.0.4, which renamed the underlying field.
+  @Deprecated(
+    'Use significantChangeApprovalDate instead. '
+    'This alias will be removed in a future release.',
+  )
+  DateTime? get mostRecentApprovalDate => significantChangeApprovalDate;
 
   /// Creates a copy of this result with the given fields replaced with new values.
   AgeSignalsResult copyWith({
@@ -71,6 +91,11 @@ class AgeSignalsResult {
     AgeDeclarationSource? source,
     String? installId,
     List<String>? activeParentalControls,
+    DateTime? significantChangeApprovalDate,
+    @Deprecated(
+      'Use significantChangeApprovalDate instead. '
+      'This alias will be removed in a future release.',
+    )
     DateTime? mostRecentApprovalDate,
   }) {
     return AgeSignalsResult(
@@ -81,8 +106,10 @@ class AgeSignalsResult {
       installId: installId ?? this.installId,
       activeParentalControls:
           activeParentalControls ?? this.activeParentalControls,
-      mostRecentApprovalDate:
-          mostRecentApprovalDate ?? this.mostRecentApprovalDate,
+      significantChangeApprovalDate:
+          significantChangeApprovalDate ??
+          mostRecentApprovalDate ??
+          this.significantChangeApprovalDate,
     );
   }
 
@@ -91,7 +118,7 @@ class AgeSignalsResult {
     return 'AgeSignalsResult(status: $status, ageLower: $ageLower, '
         'ageUpper: $ageUpper, source: $source, installId: $installId, '
         'activeParentalControls: $activeParentalControls, '
-        'mostRecentApprovalDate: $mostRecentApprovalDate)';
+        'significantChangeApprovalDate: $significantChangeApprovalDate)';
   }
 
   @override
@@ -105,8 +132,8 @@ class AgeSignalsResult {
         other.source == source &&
         other.installId == installId &&
         listEquals(other.activeParentalControls, activeParentalControls) &&
-        other.mostRecentApprovalDate?.millisecondsSinceEpoch ==
-            mostRecentApprovalDate?.millisecondsSinceEpoch;
+        other.significantChangeApprovalDate?.millisecondsSinceEpoch ==
+            significantChangeApprovalDate?.millisecondsSinceEpoch;
   }
 
   @override
@@ -118,7 +145,7 @@ class AgeSignalsResult {
       source,
       installId,
       Object.hashAll(activeParentalControls ?? const []),
-      mostRecentApprovalDate?.millisecondsSinceEpoch,
+      significantChangeApprovalDate?.millisecondsSinceEpoch,
     );
   }
 
@@ -139,7 +166,11 @@ class AgeSignalsResult {
         ?.map((e) => e as String)
         .toList();
 
-    final approvalMillis = map['mostRecentApprovalDate'] as int?;
+    // Accept the pre-0.8.0 key so a result persisted under 0.7.x still
+    // round-trips instead of silently losing the date.
+    final approvalMillis =
+        (map['significantChangeApprovalDate'] ?? map['mostRecentApprovalDate'])
+            as int?;
     final approvalDate = approvalMillis == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(approvalMillis, isUtc: true);
@@ -154,7 +185,7 @@ class AgeSignalsResult {
       source: source,
       installId: map['installId'] as String?,
       activeParentalControls: controls,
-      mostRecentApprovalDate: approvalDate,
+      significantChangeApprovalDate: approvalDate,
     );
   }
 
@@ -167,39 +198,67 @@ class AgeSignalsResult {
       'source': source?.name,
       'installId': installId,
       'activeParentalControls': activeParentalControls,
-      'mostRecentApprovalDate': mostRecentApprovalDate?.millisecondsSinceEpoch,
+      'significantChangeApprovalDate':
+          significantChangeApprovalDate?.millisecondsSinceEpoch,
     };
   }
 }
 
 /// Status of the age verification check.
 enum AgeSignalsStatus {
-  /// User is verified as being over the age threshold.
+  /// The user's age range starts at or above your highest configured age gate.
   ///
-  /// On Android, this means the user's parental controls indicate they are
-  /// above the required age. On iOS, this is determined by the declared age
-  /// range relative to the configured age gates (e.g., highest gate met).
+  /// Both platforms apply the same rule, so this means the same thing on each.
+  /// Android falls back to 18 when [AgeRangeSignals.initialize] is called
+  /// without gates, since that is where Play's open-ended top band starts.
+  ///
+  /// This is the verdict only. Check [AgeSignalsResult.source] for how much
+  /// assurance backs the age, and note that a supervised user who clears the
+  /// gate reports `verified` with
+  /// [AgeDeclarationSource.guardianDeclared], not [supervised].
   verified,
 
   /// User's age could not be determined.
   ///
   /// This may occur when:
+  /// - Play reports `NOT_SHARED`, i.e. the user refused *or* was never asked
+  ///   because their region is out of scope (Android cannot distinguish the
+  ///   two)
   /// - User has not set up parental controls (Android)
   /// - Age verification data is not available
   /// - API is not available in the user's region
+  ///
+  /// Treat this as "no signal" and fall back to your own default experience,
+  /// not as a refusal.
   unknown,
 
-  /// User declined to share their age information (iOS only).
+  /// User explicitly declined to share their age information (iOS only).
   ///
-  /// On iOS, the user explicitly chose not to share their age range
-  /// with the app.
+  /// Apple reports a real refusal, so this genuinely means the person was
+  /// asked and said no.
+  ///
+  /// Android never returns this. Play collapses "refused" and "never asked
+  /// because the region is out of scope" into one `NOT_SHARED` value, which
+  /// cannot be told apart, so the plugin reports [unknown] there rather than
+  /// claiming an intent the user may never have expressed.
   declined,
 
-  /// User is under parental supervision or below age threshold.
+  /// The user must verify their age before signals can be shared
+  /// (Android only).
   ///
-  /// On Android, indicates the user is managed by parental controls
-  /// and may be below the required age threshold. On iOS, this value is
-  /// returned when the declared age range does not meet the configured gates.
+  /// Play reports `VERIFICATION_REQUIRED` when the user is in a jurisdiction
+  /// that requires age verification and their age is not yet established.
+  /// Send them to the Play Store app to verify or to set up supervision;
+  /// there is no in-app flow for this. iOS never returns this value.
+  verificationRequired,
+
+  /// The user's age range falls below your highest configured age gate.
+  ///
+  /// Both platforms apply the same rule. This describes the age verdict, not
+  /// the supervision relationship: read
+  /// [AgeDeclarationSource.guardianDeclared] on
+  /// [AgeSignalsResult.source] to detect a supervised account, which can also
+  /// be [verified] when the attested range clears your gate.
   supervised,
 
   /// User is supervised and awaiting guardian approval (Android only).
@@ -221,18 +280,46 @@ enum AgeSignalsStatus {
   /// which this plugin does not wrap.
   supervisedApprovalDenied,
 
-  /// User declared their age through Google Play (Android only).
+  /// No longer returned. Read [AgeSignalsResult.source] instead.
   ///
-  /// On Android, this indicates the user has self-declared their age
-  /// through Google Play's age declaration flow (available with age-signals 0.0.3+).
+  /// This conflated the verdict with how the age was established. A
+  /// self-declared adult now reports [verified] with
+  /// [AgeDeclarationSource.selfDeclared], so callers can apply their own
+  /// assurance policy rather than being unable to clear an adult gate at all.
+  /// Retained so existing switches keep compiling.
+  @Deprecated(
+    'No longer returned. Check source == AgeDeclarationSource.selfDeclared '
+    'instead. This value will be removed in a future release.',
+  )
   declared,
 }
 
-/// Source of the age declaration (iOS only).
+/// How the age range was established, i.e. how much assurance it carries.
+///
+/// On Android this is Play's `AgeRangeSource` tier. On
+/// iOS only [selfDeclared] and [guardianDeclared] occur; Apple reports no
+/// equivalent of the estimated or ID-verified tiers.
 enum AgeDeclarationSource {
-  /// Age was self-declared by the user.
+  /// Age was self-declared by an unsupervised user.
+  ///
+  /// Play `TIER_A`.
   selfDeclared,
 
-  /// Age was declared by a guardian in Family Sharing.
+  /// Age was attested by a guardian, i.e. the user is supervised.
+  ///
+  /// Play `TIER_B`. On iOS, declared by a guardian in Family Sharing.
   guardianDeclared,
+
+  /// Age was estimated for an unsupervised user (Android only).
+  ///
+  /// Play `TIER_C`. Stronger than a bare self-declaration: the age was
+  /// assessed from an actual signal such as a credit card, email address,
+  /// selfie assessment, government ID or tax ID, rather than typed in.
+  estimated,
+
+  /// Age was verified for an unsupervised user by an ID check (Android only).
+  ///
+  /// Play `TIER_D`, the strongest assurance Play reports: a government ID
+  /// combined with a selfie assessment, or a digital ID.
+  idVerified,
 }

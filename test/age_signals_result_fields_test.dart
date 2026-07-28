@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('AgeSignalsResult new fields', () {
     test(
-      'fromMap parses activeParentalControls and mostRecentApprovalDate',
+      'fromMap parses activeParentalControls and significantChangeApprovalDate',
       () {
         final result = AgeSignalsResult.fromMap({
           'status': 'supervised',
@@ -13,7 +13,7 @@ void main() {
           'source': null,
           'installId': 'abc',
           'activeParentalControls': ['communicationSafety', 'webContentFilter'],
-          'mostRecentApprovalDate': 1735689600000,
+          'significantChangeApprovalDate': 1735689600000,
         });
 
         expect(result.activeParentalControls, [
@@ -21,7 +21,7 @@ void main() {
           'webContentFilter',
         ]);
         expect(
-          result.mostRecentApprovalDate,
+          result.significantChangeApprovalDate,
           DateTime.fromMillisecondsSinceEpoch(1735689600000, isUtc: true),
         );
       },
@@ -37,7 +37,7 @@ void main() {
       });
 
       expect(result.activeParentalControls, isNull);
-      expect(result.mostRecentApprovalDate, isNull);
+      expect(result.significantChangeApprovalDate, isNull);
     });
 
     test('toMap round-trips the new fields', () {
@@ -46,7 +46,7 @@ void main() {
         ageLower: 13,
         ageUpper: 15,
         activeParentalControls: const ['screenTime'],
-        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+        significantChangeApprovalDate: DateTime.fromMillisecondsSinceEpoch(
           1735689600000,
           isUtc: true,
         ),
@@ -59,14 +59,14 @@ void main() {
     test('equality compares approval date instants across time zones', () {
       final utc = AgeSignalsResult(
         status: AgeSignalsStatus.supervised,
-        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+        significantChangeApprovalDate: DateTime.fromMillisecondsSinceEpoch(
           1735689600000,
           isUtc: true,
         ),
       );
       final local = AgeSignalsResult(
         status: AgeSignalsStatus.supervised,
-        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+        significantChangeApprovalDate: DateTime.fromMillisecondsSinceEpoch(
           1735689600000,
         ),
       );
@@ -90,24 +90,24 @@ void main() {
     });
   });
 
-  group('AgeSignalsMockData mostRecentApprovalDate', () {
+  group('AgeSignalsMockData significantChangeApprovalDate', () {
     test('toMap emits epoch milliseconds', () {
       final mock = AgeSignalsMockData(
         status: AgeSignalsStatus.supervised,
         ageLower: 13,
         ageUpper: 15,
-        mostRecentApprovalDate: DateTime.fromMillisecondsSinceEpoch(
+        significantChangeApprovalDate: DateTime.fromMillisecondsSinceEpoch(
           1735689600000,
           isUtc: true,
         ),
       );
 
-      expect(mock.toMap()['mostRecentApprovalDate'], 1735689600000);
+      expect(mock.toMap()['significantChangeApprovalDate'], 1735689600000);
     });
 
     test('toMap emits null when unset', () {
       const mock = AgeSignalsMockData(status: AgeSignalsStatus.verified);
-      expect(mock.toMap()['mostRecentApprovalDate'], isNull);
+      expect(mock.toMap()['significantChangeApprovalDate'], isNull);
     });
   });
 }

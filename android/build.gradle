@@ -42,7 +42,7 @@ android {
     }
 
     dependencies {
-        implementation("com.google.android.play:age-signals:0.0.3")
+        implementation("com.google.android.play:age-signals:0.0.4")
         // Explicit artifact + version: KGP's test-framework auto-selection is
         // unavailable when AGP 9 built-in Kotlin is active.
         testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.2.20")

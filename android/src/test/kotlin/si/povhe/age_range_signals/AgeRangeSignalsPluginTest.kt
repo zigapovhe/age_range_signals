@@ -1,11 +1,13 @@
 package si.povhe.age_range_signals
 
-import com.google.android.play.agesignals.model.AgeSignalsVerificationStatus
+import com.google.android.play.agesignals.model.AgeRangeSource
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 internal class AgeRangeSignalsPluginTest {
@@ -20,13 +22,41 @@ internal class AgeRangeSignalsPluginTest {
         Mockito.verify(mockResult).success(null)
     }
 
+    // --- Mock data is refused outside debuggable builds ---
+
+    @Test
+    fun shouldRejectMockData_onlyBlocksMockDataInReleaseBuilds() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        // The case that matters: a shipped build that would otherwise forge
+        // its own age gate for real users.
+        assertTrue(plugin.shouldRejectMockData(useMockData = true) { false })
+
+        // Everything else must keep working.
+        assertFalse(plugin.shouldRejectMockData(useMockData = true) { true })
+        assertFalse(plugin.shouldRejectMockData(useMockData = false) { false })
+        assertFalse(plugin.shouldRejectMockData(useMockData = false) { true })
+    }
+
+    @Test
+    fun shouldRejectMockData_doesNotProbeTheBuildTypeWhenMockDataIsOff() {
+        // isDebuggable() reads the Android Context, so it must not be consulted
+        // on the common path where no mock data was requested.
+        val plugin = AgeRangeSignalsPlugin()
+        var probed = false
+
+        plugin.shouldRejectMockData(useMockData = false) { probed = true; true }
+
+        assertFalse(probed)
+    }
+
     // --- Mock data band logic (regression coverage for 0.6.0) ---
 
     @Test
     fun buildMockResult_noMockData_usesDefaultSupervised13to15() {
         val result = AgeRangeSignalsPlugin().buildMockResult(null)
 
-        assertEquals(AgeSignalsVerificationStatus.SUPERVISED, result.userStatus())
+        assertEquals(AgeRangeSource.TIER_B, result.ageRangeSource())
         assertEquals(13, result.ageLower())
         assertEquals(15, result.ageUpper())
     }
@@ -66,12 +96,52 @@ internal class AgeRangeSignalsPluginTest {
         assertEquals(17, result.ageUpper())
     }
 
+    // --- 0.0.4 model ---
+
     @Test
-    fun buildMockResult_verified_hasNoAgeRange() {
+    fun buildMockResult_verified_isOpenEndedAdultBand() {
+        // 0.0.3 reported verified with no range at all. 0.0.4 has no status
+        // field, so "verified" is now carried by an open-ended 18+ band from an
+        // unsupervised, ID-verified source.
         val result = AgeRangeSignalsPlugin().buildMockResult(mapOf("status" to "verified"))
 
-        assertEquals(AgeSignalsVerificationStatus.VERIFIED, result.userStatus())
-        assertNull(result.ageLower())
+        assertEquals(AgeRangeSource.TIER_D, result.ageRangeSource())
+        assertEquals(18, result.ageLower())
         assertNull(result.ageUpper())
+    }
+
+    @Test
+    fun buildMockResult_declared_usesSelfDeclaredTier() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(mapOf("status" to "declared"))
+
+        assertEquals(AgeRangeSource.TIER_A, result.ageRangeSource())
+    }
+
+    @Test
+    fun buildMockResult_explicitSourceOverridesStatusImpliedTier() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "supervised", "source" to "estimated"),
+        )
+
+        assertEquals(AgeRangeSource.TIER_C, result.ageRangeSource())
+    }
+
+    @Test
+    fun buildMockAccessResult_mapsNonSharingStatuses() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertEquals(
+            com.google.android.play.agesignals.model.AgeSignalsStatus.NOT_SHARED,
+            plugin.buildMockAccessResult(mapOf("status" to "declined")).ageSignalsStatus(),
+        )
+        assertEquals(
+            com.google.android.play.agesignals.model.AgeSignalsStatus.VERIFICATION_REQUIRED,
+            plugin.buildMockAccessResult(mapOf("status" to "verificationRequired"))
+                .ageSignalsStatus(),
+        )
+        assertEquals(
+            com.google.android.play.agesignals.model.AgeSignalsStatus.SHARED,
+            plugin.buildMockAccessResult(mapOf("status" to "supervised")).ageSignalsStatus(),
+        )
     }
 }
