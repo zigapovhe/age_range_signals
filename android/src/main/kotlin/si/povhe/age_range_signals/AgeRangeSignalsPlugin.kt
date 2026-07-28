@@ -63,17 +63,21 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      *
      * The mock `status` string is translated into the [AgeRangeSource] tier and
      * [SignificantChangeStatus] pair that [resultToMap] derives that status back
-     * from, so mocked scenarios round-trip unchanged. Explicit `ageRangeSource` /
+     * from. Most scenarios round-trip, but `declared` does not: the verdict
+     * comes from the age band, so a self-declared mock on its default band
+     * returns `supervised`. Explicit `ageRangeSource` /
      * `significantChangeStatus` entries win over the derived pair, for tests
      * that target a specific tier (e.g. verified via tierD rather than the
      * default tierC).
      *
-     * IMPORTANT: Age ranges are determined by Google Play's parental control settings,
-     * NOT by the app's configured age gates. Android ignores the ageGates parameter -
-     * it's iOS-only. Google Play returns predefined bands: 0-12, 13-15, 16-17, 18+.
+     * IMPORTANT: the band *values* are Google Play's, not the app's: Play
+     * returns predefined bands (0-12, 13-15, 16-17, 18+) from the account's
+     * settings. The configured age gates do not change those bands, but the
+     * highest gate is the bar the band is measured against, so the implied
+     * mock bands here track [adultThreshold] rather than a fixed 18.
      */
     internal fun buildMockResult(mockDataMap: Map<String, Any?>?): AgeSignalsResult {
-        // Default to a supervised user (13-15) for backwards compatibility when no
+        // Default to a supervised user for backwards compatibility when no
         // custom mock data is supplied.
         val statusString = mockDataMap?.get("status") as? String ?: "supervised"
 
@@ -99,11 +103,12 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         ageRangeSource?.let { resultBuilder.setAgeRangeSource(it) }
         changeStatus?.let { resultBuilder.setSignificantChangeStatus(it) }
 
-        // Explicit mock bounds apply to any tier: a real verified response
-        // carries the open-ended 18+ band. The 13-15 default is reserved for
-        // the declared and supervised tiers, where a band is always present,
-        // so verified mocks without explicit bounds keep their documented
-        // null bounds.
+        // Explicit mock bounds apply to any tier. Without them the band is
+        // implied by the tier, and the implied bands track [adultThreshold]
+        // rather than a hardcoded 18: the status is derived by comparing the
+        // band against that threshold, so pinning the defaults to 18 would
+        // make the `status` shorthand lie for any other gate (a `verified`
+        // mock deriving `supervised` under ageGates: [21], for instance).
         if (ageRangeSource != null) {
             val ageLowerRaw = mockDataMap?.get("ageLower") as? Int
             val ageUpperRaw = mockDataMap?.get("ageUpper") as? Int
@@ -122,13 +127,20 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 // Unsupervised tiers with no explicit band: real Play reports
                 // the open-ended adult band here, and the status is derived
                 // from that band, so a bandless mock could never be verified.
-                resultBuilder.setAgeLower(DEFAULT_ADULT_AGE)
+                resultBuilder.setAgeLower(adultThreshold)
             } else {
                 // No explicit lower bound (no mock data at all, or a partial
                 // mock omitting both bounds; toMap always serializes the keys,
-                // so both arrive as null): apply the default supervised band.
-                resultBuilder.setAgeLower(13)
-                resultBuilder.setAgeUpper(ageUpperRaw ?: 15)
+                // so both arrive as null): clamp the default band below the
+                // threshold so the mock derives `supervised` whatever gates
+                // the caller configured. At the default gate of 18 this is
+                // Play's documented 13-15 band.
+                resultBuilder.setAgeLower(
+                    minOf(DEFAULT_SUPERVISED_LOWER, adultThreshold - 1),
+                )
+                resultBuilder.setAgeUpper(
+                    ageUpperRaw ?: minOf(DEFAULT_SUPERVISED_UPPER, adultThreshold - 1),
+                )
             }
         }
 
@@ -164,16 +176,6 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     /**
-     * Maps a platform [AgeSignalsResult] to the channel map consumed by Dart.
-     * Shared by the real and fake manager listeners so the two paths cannot
-     * drift apart. iOS-only keys are present but always null on Android.
-     *
-     * The library carries no user status of its own, so the cross-platform
-     * `status` is derived here: parent-managed accounts (tierB) surface the
-     * supervised family, refined by a pending or declined significant change;
-     * tierA is Play's self-declared flow; tierC/tierD are verified.
-     */
-    /**
      * Derives the cross-platform status.
      *
      * [ageRangeSource] says how the age was established, not what it is: a
@@ -205,6 +207,12 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         return if (lower >= threshold) "verified" else "supervised"
     }
 
+    /**
+     * Maps a platform [AgeSignalsResult] to the channel map consumed by Dart.
+     * Shared by the real and fake manager listeners so the two paths cannot
+     * drift apart. iOS-only keys are present but always null on Android, so
+     * both platforms emit the same shape.
+     */
     internal fun resultToMap(ageSignalsResult: AgeSignalsResult): Map<String, Any?> {
         val ageRangeSource = ageSignalsResult.ageRangeSource()
         val changeStatus = ageSignalsResult.significantChangeStatus()
@@ -467,5 +475,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private companion object {
         /** Lower bound of Google Play's open-ended adult band. */
         const val DEFAULT_ADULT_AGE = 18
+
+        /** Bounds of the band mocked for supervised-family scenarios. */
+        const val DEFAULT_SUPERVISED_LOWER = 13
+        const val DEFAULT_SUPERVISED_UPPER = 15
     }
 }

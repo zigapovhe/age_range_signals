@@ -25,7 +25,7 @@ export 'src/models/age_regulatory_feature.dart';
 ///
 /// Example usage:
 /// ```dart
-/// // Initialize with age gates (iOS only, optional on Android)
+/// // Initialize with age gates (required on iOS, and used on Android as the bar for `verified`)
 /// await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
 ///
 /// // Request access, then check age signals
@@ -99,7 +99,7 @@ class AgeRangeSignals {
   ///
   /// // For production with real APIs
   /// await AgeRangeSignals.instance.initialize(
-  ///   ageGates: [13, 16, 18],  // Required for iOS
+  ///   ageGates: [13, 16, 18],  // Both platforms
   ///   useMockData: false,
   /// );
   /// ```

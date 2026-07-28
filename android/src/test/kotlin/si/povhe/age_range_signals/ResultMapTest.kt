@@ -1,6 +1,9 @@
 package si.povhe.age_range_signals
 
 import com.google.android.play.agesignals.model.AgeRangeSource
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
+import org.mockito.Mockito
 import com.google.android.play.agesignals.model.SignificantChangeStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -226,5 +229,52 @@ class ResultMapTest {
             "verified",
             plugin.deriveStatus(AgeRangeSource.TIER_B, SignificantChangeStatus.APPROVED, 18, 18),
         )
+    }
+
+    // --- mock shorthand stays faithful at non-default gates ---
+
+    @Test
+    fun mockShorthand_holdsAtANonDefaultHighGate() {
+        // With ageGates: [21] a `verified` mock must still derive `verified`.
+        // Pinning the implied band to 18 would derive `supervised` (18 < 21).
+        val plugin = AgeRangeSignalsPlugin()
+        plugin.onMethodCall(
+            MethodCall("initialize", mapOf("ageGates" to listOf(21))),
+            Mockito.mock(MethodChannel.Result::class.java),
+        )
+
+        val map = plugin.resultToMap(plugin.buildMockResult(mapOf("status" to "verified")))
+        assertEquals("verified", map["status"])
+    }
+
+    @Test
+    fun mockShorthand_holdsAtANonDefaultLowGate() {
+        // With ageGates: [13] the default supervised band must still derive
+        // `supervised`. A fixed 13-15 band would clear the gate (13 >= 13).
+        val plugin = AgeRangeSignalsPlugin()
+        plugin.onMethodCall(
+            MethodCall("initialize", mapOf("ageGates" to listOf(13))),
+            Mockito.mock(MethodChannel.Result::class.java),
+        )
+
+        val map = plugin.resultToMap(plugin.buildMockResult(mapOf("status" to "supervised")))
+        assertEquals("supervised", map["status"])
+    }
+
+    @Test
+    fun initialize_storesTheHighestGateAsTheVerifiedBar() {
+        val plugin = AgeRangeSignalsPlugin()
+        plugin.onMethodCall(
+            MethodCall("initialize", mapOf("ageGates" to listOf(13, 16, 18))),
+            Mockito.mock(MethodChannel.Result::class.java),
+        )
+
+        val band17 = plugin.buildMockResult(
+            mapOf("status" to "supervised", "ageLower" to 17, "ageUpper" to 17),
+        )
+        assertEquals("supervised", plugin.resultToMap(band17)["status"])
+
+        val band18 = plugin.buildMockResult(mapOf("status" to "supervised", "ageLower" to 18))
+        assertEquals("verified", plugin.resultToMap(band18)["status"])
     }
 }

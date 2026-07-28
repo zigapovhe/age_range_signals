@@ -56,6 +56,7 @@
     "`showSignificantUpdateAcknowledgment()` throws `UnsupportedPlatformException` on Android and iOS below 26.4. Apple reports user dismissal with the same error as real unavailability, so `ApiNotAvailableException` is not proof the sheet never showed.",
     "Platform floors: Android API 23+ with Google Play services; iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features. iOS also requires Apple's DeclaredAgeRange entitlement.",
     "`AgeSignalsResult.significantChangeApprovalDate` was named `mostRecentApprovalDate` before 0.8.0. The old name still works as a deprecated alias on the result, the mock data, both constructors and `copyWith`.",
-    "Google Play policy allows Age Signals data only for delivering age-appropriate experiences. Never route it to advertising, marketing, profiling, or analytics. That risks API termination and app suspension, so never log the result to an analytics SDK."
+    "Google Play policy allows Age Signals data only for delivering age-appropriate experiences. Never route it to advertising, marketing, profiling, or analytics. That risks API termination and app suspension, so never log the result to an analytics SDK.",
+    "Play reports fixed age bands (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates, so a gate off a band edge quantises upward on Android: with a gate at 15 a 15-year-old is verified on iOS but supervised on Android."
   ]
 }

@@ -266,12 +266,9 @@ import 'dart:io';
 import 'package:age_range_signals/age_range_signals.dart';
 
 Future<void> checkUserAge() async {
-  // Initialize with age gates on iOS (required); Android is a no-op.
-  if (Platform.isIOS) {
-    await AgeRangeSignals.instance.initialize(
-      ageGates: [13, 16, 18],
-    );
-  }
+  // Call on both platforms: iOS requires the gates, and Android uses your
+  // highest gate as the bar for `verified`.
+  await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
 
   // Check age signals
   try {
@@ -360,9 +357,11 @@ final result = await AgeRangeSignals.instance.checkAgeSignals();
 // including a self-declaration, so a strictly 18+ app should decide what
 // assurance it will accept rather than leaving it implicit.
 const acceptable = {AgeRangeSource.tierC, AgeRangeSource.tierD};
+// Discriminate on the platform, not on a null tier: Android also reports
+// null for a tier this plugin version does not recognise, and that band is
+// still judged by age, so a null check alone would admit unknown assurance.
 final assuranceOk =
-    result.ageRangeSource == null || // iOS: Apple reports no tier
-    acceptable.contains(result.ageRangeSource);
+    Platform.isIOS || acceptable.contains(result.ageRangeSource);
 
 if (result.status == AgeSignalsStatus.verified && assuranceOk) {
   // User meets 18+ requirement at an assurance level you accept
@@ -382,9 +381,9 @@ import 'package:age_range_signals/age_range_signals.dart';
 const defaultAgeGates = [13, 16, 18];
 
 Future<void> initAgeSignals() async {
-  if (Platform.isIOS) {
-    await AgeRangeSignals.instance.initialize(ageGates: defaultAgeGates);
-  }
+  // Both platforms: iOS requires the gates, Android derives `verified` from
+  // your highest one.
+  await AgeRangeSignals.instance.initialize(ageGates: defaultAgeGates);
 }
 
 Future<void> requestAgeSignals() async {
@@ -487,7 +486,7 @@ Result object containing age verification information.
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
 - `String? installId` - Installation identifier (Android only, supervised users). When a parent revokes approval, Google lists the id on the Play Console's Revoked app approvals tab as a CSV download retained for 90 days; store it on your backend and ingest revocations within that window if you need to act on them - Google permits no other use
 - `List<String>? activeParentalControls` - Parental controls active on the user's account, as raw Apple identifiers such as `communicationLimits` (iOS only)
-- `AgeRangeSource? ageRangeSource` - How Google Play established the age range (Android only); `status` is derived from this tier together with `significantChangeStatus`
+- `AgeRangeSource? ageRangeSource` - How Google Play established the age range (Android only). `status` is **not** derived from this tier: the verdict comes from the age band measured against your highest gate. Use this to apply a minimum assurance policy
 - `SignificantChangeStatus? significantChangeStatus` - Parent approval state for significant app changes (Android only, supervised users)
 - `DateTime? significantChangeApprovalDate` - Effective date of the most recently approved significant change (Android only, supervised users). Named `mostRecentApprovalDate` before 0.8.0; the old name still works as a deprecated alias
 
@@ -508,6 +507,8 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 **†Edge case:** `ageUpper` is `null` for the open-ended 18+ band regardless of tier.
 
+**Note:** Play reports fixed bands (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates, so a gate that does not sit on a band edge quantises upward on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Prefer gates on band edges (13, 16, 18) if you need the two platforms to agree exactly.
+
 **Note:** `ageRangeSource` says **how** an age was established, not what it is. A `tierD` result means an ID was checked, and that ID can read 12, so the tier is never the verdict on its own. `verified` and `supervised` split at your highest configured age gate, defaulting to 18 when `initialize()` is called without gates. iOS applies the same comparison, so one `status` check means the same thing on both platforms.
 
 **Note:** Android never returns `declined`. Play reports `notShared` both for a genuine refusal and for a user who was never asked because their region is out of scope, and the two are indistinguishable, so the plugin reports `unknown` rather than asserting an intent. Only iOS reports a real refusal.
@@ -521,12 +522,13 @@ Play does not return a single status. The plugin derives it from the age band Pl
 | `verified` | Populated‡ | Populated§ | User consented; lower bound ≥ highest configured gate |
 | `supervised` | Populated‡ | Populated§ | User consented; lower bound < highest configured gate |
 | `declined` | `null` | `null` | User declined to share age information |
+| `unknown` | `null` | Populated§ | User consented but Apple reported no lower bound, so there is no verdict |
 
 **‡ `ageUpper` may be `null`** for an open-ended top bucket (e.g., an 18+ range returns `ageLower=18, ageUpper=null`), mirroring the Android edge case above.
 
 **§ `source` may be `null`** when the declaration type is neither self-declared nor guardian-declared (e.g., Apple's `paymentChecked` / `guardianPaymentChecked`, or an unrecognized/future type), even for `verified`/`supervised`.
 
-**Note:** iOS does not return `unknown` (as of 0.6.0). The previous `isEligibleForAgeFeatures` pre-check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)).
+**Note:** iOS no longer returns `unknown` from an eligibility pre-check (as of 0.6.0); that check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)). It can still return `unknown` for a shared range that carries no lower bound, since that shape yields no verdict. Android reports `unknown` for the same shape.
 
 ### AgeSignalsStatus
 
@@ -538,7 +540,7 @@ Enum representing the verification status:
 - `supervisedApprovalDenied` - User is supervised and the parent denied the significant change (Android only)
 - `declared` - **Deprecated, no longer returned.** It conflated the verdict with how the age was established, so a self-declared adult could not clear a `verified` gate while the stronger `tierC` and `tierD` passed automatically. Read `ageRangeSource == AgeRangeSource.tierA` instead
 - `declined` - User declined to share age (iOS only; on Android a decline surfaces as `AgeSignalsAccessStatus.notShared` from the access request)
-- `unknown` - Age information not available: access not shared or verification required (Android), or the API is unavailable. As of 0.6.0, iOS no longer returns this (see [Regional Eligibility](#regional-eligibility-ios-262))
+- `unknown` - No verdict available: access not shared or verification required (Android), the API is unavailable, or the platform reported a range with no lower bound. iOS no longer returns it from an eligibility pre-check (removed in 0.6.0, see [Regional Eligibility](#regional-eligibility-ios-262)), but does for a bandless range
 
 ### AgeSignalsAccessStatus
 
