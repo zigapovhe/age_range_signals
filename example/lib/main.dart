@@ -35,6 +35,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   bool _isInitialized = false;
   final bool _isIos = Platform.isIOS;
   String _currentScenario = 'Default (Supervised 13-15)';
+  String? _accessOutcome;
   String? _regulatoryOutcome;
   String? _acknowledgmentOutcome;
 
@@ -73,8 +74,25 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _currentScenario = scenarioName;
       _result = null;
       _error = null;
+      _accessOutcome = null;
     });
     await _initializePlugin(mockData: mockData);
+  }
+
+  Future<void> _requestAccess() async {
+    setState(() {
+      _accessOutcome = 'Requesting...';
+    });
+    try {
+      final status = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+      setState(() {
+        _accessOutcome = _getAccessStatusText(status);
+      });
+    } on AgeSignalsException catch (e) {
+      setState(() {
+        _accessOutcome = '${e.runtimeType}: ${e.message}';
+      });
+    }
   }
 
   Future<void> _checkAgeSignals() async {
@@ -181,6 +199,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
             if (_isIos) ...[const SizedBox(height: 12), _buildIosWarningCard()],
             if (!_isIos) ...[const SizedBox(height: 12), _buildScenarioCard()],
             const SizedBox(height: 16),
+            _buildAccessButton(),
+            const SizedBox(height: 12),
             _buildCheckButton(),
             const SizedBox(height: 12),
             _buildRegulatoryCard(),
@@ -315,6 +335,13 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   'Unknown',
                   const AgeSignalsMockData(status: AgeSignalsStatus.unknown),
                 ),
+                _buildScenarioChip(
+                  'Access Not Shared',
+                  const AgeSignalsMockData(
+                    status: AgeSignalsStatus.unknown,
+                    accessStatus: AgeSignalsAccessStatus.notShared,
+                  ),
+                ),
               ],
             ),
           ],
@@ -327,6 +354,32 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
     return ActionChip(
       label: Text(label),
       onPressed: () => _reinitializeWithScenario(label, mockData),
+    );
+  }
+
+  Widget _buildAccessButton() {
+    // Step 1 of the Play flow: ask for access (may show Play's age sharing
+    // prompt). On iOS this resolves to "shared" without showing anything.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _isLoading || !_isInitialized ? null : _requestAccess,
+          icon: const Icon(Icons.lock_open),
+          label: const Text('Request Age Signals Access'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+        if (_accessOutcome != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Access: $_accessOutcome',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
     );
   }
 
@@ -488,6 +541,21 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
               _buildResultRow('Age Upper Bound', _result!.ageUpper.toString()),
             if (_result!.source != null)
               _buildResultRow('Source', _getSourceText(_result!.source!)),
+            if (_result!.ageRangeSource != null)
+              _buildResultRow(
+                'Range Source',
+                _getAgeRangeSourceText(_result!.ageRangeSource!),
+              ),
+            if (_result!.significantChangeStatus != null)
+              _buildResultRow(
+                'Change Status',
+                _getChangeStatusText(_result!.significantChangeStatus!),
+              ),
+            if (_result!.significantChangeApprovalDate != null)
+              _buildResultRow(
+                'Change Approved',
+                _result!.significantChangeApprovalDate!.toIso8601String(),
+              ),
             if (_result!.installId != null)
               _buildResultRow('Install ID', _result!.installId!),
           ],
@@ -540,6 +608,43 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         return 'Self Declared';
       case AgeDeclarationSource.guardianDeclared:
         return 'Guardian Declared';
+    }
+  }
+
+  String _getAccessStatusText(AgeSignalsAccessStatus status) {
+    switch (status) {
+      case AgeSignalsAccessStatus.shared:
+        return 'Shared (age signals available)';
+      case AgeSignalsAccessStatus.notShared:
+        return 'Not shared (user or parent declined)';
+      case AgeSignalsAccessStatus.verificationRequired:
+        return 'Verification required (completed in the Play Store)';
+      case AgeSignalsAccessStatus.unknown:
+        return 'Unknown';
+    }
+  }
+
+  String _getAgeRangeSourceText(AgeRangeSource source) {
+    switch (source) {
+      case AgeRangeSource.tierA:
+        return 'Tier A (self-declared)';
+      case AgeRangeSource.tierB:
+        return 'Tier B (parent-managed account)';
+      case AgeRangeSource.tierC:
+        return 'Tier C (verified)';
+      case AgeRangeSource.tierD:
+        return 'Tier D (strongly verified)';
+    }
+  }
+
+  String _getChangeStatusText(SignificantChangeStatus status) {
+    switch (status) {
+      case SignificantChangeStatus.approved:
+        return 'Approved (parent approved the latest change)';
+      case SignificantChangeStatus.pending:
+        return 'Pending (waiting for parent approval)';
+      case SignificantChangeStatus.declined:
+        return 'Declined (parent denied the change)';
     }
   }
 }
