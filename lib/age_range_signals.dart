@@ -76,7 +76,7 @@ class AgeRangeSignals {
   ///
   /// Set [useMockData] to true to use fake/test data instead of real APIs.
   /// When [useMockData] is true, you can optionally provide [mockData] to
-  /// customize the mock response using Google's official [FakeAgeSignalsManager].
+  /// customize the mock response using Google's official `FakeAgeSignalsManager`.
   ///
   /// **IMPORTANT:** Mock data is only supported on Android. Apple does not provide
   /// official testing utilities for the DeclaredAgeRange API. On iOS, the

@@ -1,9 +1,9 @@
 import 'age_signals_access_status.dart';
 import 'age_signals_result.dart';
 
-/// Configuration for mock/test data used when [useMockData] is true.
+/// Configuration for mock/test data used when `useMockData` is true.
 ///
-/// **Android only** - Uses Google's official [FakeAgeSignalsManager] for testing.
+/// **Android only** - Uses Google's official `FakeAgeSignalsManager` for testing.
 /// Apple does not provide testing utilities for DeclaredAgeRange API, so mock
 /// data is not supported on iOS.
 ///
