@@ -186,4 +186,17 @@ void main() {
       );
     });
   });
+
+  test('copyWith replaces activeParentalControls', () {
+    const before = AgeSignalsResult(
+      status: AgeSignalsStatus.supervised,
+      activeParentalControls: ['communicationLimits'],
+    );
+
+    final after = before.copyWith(
+      activeParentalControls: ['screenTime', 'other'],
+    );
+
+    expect(after.activeParentalControls, ['screenTime', 'other']);
+  });
 }

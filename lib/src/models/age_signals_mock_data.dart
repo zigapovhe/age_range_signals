@@ -28,6 +28,10 @@ class AgeSignalsMockData {
     required this.status,
     this.ageLower,
     this.ageUpper,
+    @Deprecated(
+      'Unused on every platform. Use ageRangeSource to select the Play tier. '
+      'This field will be removed in a future release.',
+    )
     this.source,
     this.installId,
     this.accessStatus,
@@ -132,6 +136,10 @@ class AgeSignalsMockData {
     AgeSignalsStatus? status,
     int? ageLower,
     int? ageUpper,
+    @Deprecated(
+      'Unused on every platform. Use ageRangeSource to select the Play tier. '
+      'This field will be removed in a future release.',
+    )
     AgeDeclarationSource? source,
     String? installId,
     AgeSignalsAccessStatus? accessStatus,

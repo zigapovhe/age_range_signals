@@ -7,6 +7,7 @@ import org.mockito.Mockito
 import com.google.android.play.agesignals.model.SignificantChangeStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class ResultMapTest {
@@ -276,5 +277,58 @@ class ResultMapTest {
 
         val band18 = plugin.buildMockResult(mapOf("status" to "supervised", "ageLower" to 18))
         assertEquals("verified", plugin.resultToMap(band18)["status"])
+    }
+
+    // --- mock bands must be shapes Play can actually return ---
+
+    @Test
+    fun mockBands_areAlwaysRealPlayBands() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        // Never an inverted or single-year band invented by arithmetic.
+        for (gate in listOf(0, 1, 13, 14, 15, 16, 18, 21)) {
+            val (low, high) = plugin.supervisedBandBelow(gate)
+            assertTrue(low >= 0, "band lower bound went negative at gate $gate")
+            assertTrue(high >= low, "inverted band at gate $gate")
+            assertTrue(
+                (low to high) == (0 to 12) || (low to high) == (13 to 15),
+                "band $low-$high at gate $gate is not one Play returns",
+            )
+        }
+    }
+
+    @Test
+    fun mockBand_explicitUpperNeverInvertsTheRange() {
+        val plugin = AgeRangeSignalsPlugin()
+        val result = plugin.buildMockResult(
+            mapOf("status" to "supervised", "ageUpper" to 12),
+        )
+
+        val low = result.ageLower()!!
+        val high = result.ageUpper()!!
+        assertTrue(high >= low, "mock produced an inverted band $low-$high")
+    }
+
+    @Test
+    fun mockBand_explicitUpperSurvivesOnUnsupervisedTiers() {
+        val plugin = AgeRangeSignalsPlugin()
+        val result = plugin.buildMockResult(
+            mapOf("status" to "verified", "ageUpper" to 20),
+        )
+
+        assertEquals(20, result.ageUpper())
+    }
+
+    @Test
+    fun initialize_withoutGatesKeepsThePreviouslyConfiguredBar() {
+        // iOS keeps its gates when a later initialize() omits them; Android
+        // must not silently reset the bar to 18.
+        val plugin = AgeRangeSignalsPlugin()
+        val ok = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(MethodCall("initialize", mapOf("ageGates" to listOf(21))), ok)
+        plugin.onMethodCall(MethodCall("initialize", mapOf("useMockData" to false)), ok)
+
+        val band18 = plugin.buildMockResult(mapOf("status" to "supervised", "ageLower" to 18))
+        assertEquals("supervised", plugin.resultToMap(band18)["status"])
     }
 }

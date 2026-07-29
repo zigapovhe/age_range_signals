@@ -104,14 +104,16 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         changeStatus?.let { resultBuilder.setSignificantChangeStatus(it) }
 
         // Explicit mock bounds apply to any tier. Without them the band is
-        // implied by the tier, and the implied bands track [adultThreshold]
-        // rather than a hardcoded 18: the status is derived by comparing the
-        // band against that threshold, so pinning the defaults to 18 would
-        // make the `status` shorthand lie for any other gate (a `verified`
-        // mock deriving `supervised` under ageGates: [21], for instance).
+        // implied by the tier, chosen from Play's real bands relative to
+        // [adultThreshold]: the status is derived by comparing the band
+        // against that threshold, so a band fixed at 18 would make the
+        // `status` shorthand lie for any other gate.
         if (ageRangeSource != null) {
             val ageLowerRaw = mockDataMap?.get("ageLower") as? Int
             val ageUpperRaw = mockDataMap?.get("ageUpper") as? Int
+            val unsupervisedAdultTier = ageRangeSource == AgeRangeSource.TIER_C ||
+                ageRangeSource == AgeRangeSource.TIER_D
+
             if (ageLowerRaw != null) {
                 resultBuilder.setAgeLower(ageLowerRaw)
 
@@ -121,26 +123,22 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 if (ageUpperRaw != null) {
                     resultBuilder.setAgeUpper(ageUpperRaw)
                 }
-            } else if (ageRangeSource == AgeRangeSource.TIER_C ||
-                ageRangeSource == AgeRangeSource.TIER_D
-            ) {
-                // Unsupervised tiers with no explicit band: real Play reports
-                // the open-ended adult band here, and the status is derived
-                // from that band, so a bandless mock could never be verified.
+            } else if (unsupervisedAdultTier) {
+                // Real Play reports the open-ended adult band here, which
+                // starts at the threshold so the mock derives `verified`. An
+                // explicit upper bound still wins, so the band is not silently
+                // reopened.
                 resultBuilder.setAgeLower(adultThreshold)
+                ageUpperRaw?.let { resultBuilder.setAgeUpper(it) }
             } else {
-                // No explicit lower bound (no mock data at all, or a partial
-                // mock omitting both bounds; toMap always serializes the keys,
-                // so both arrive as null): clamp the default band below the
-                // threshold so the mock derives `supervised` whatever gates
-                // the caller configured. At the default gate of 18 this is
-                // Play's documented 13-15 band.
-                resultBuilder.setAgeLower(
-                    minOf(DEFAULT_SUPERVISED_LOWER, adultThreshold - 1),
-                )
-                resultBuilder.setAgeUpper(
-                    ageUpperRaw ?: minOf(DEFAULT_SUPERVISED_UPPER, adultThreshold - 1),
-                )
+                // No explicit lower bound: use the highest real Play band that
+                // sits entirely below the threshold, so the mock derives
+                // `supervised` without inventing a band Play never returns.
+                val (low, high) = supervisedBandBelow(adultThreshold)
+                resultBuilder.setAgeLower(low)
+                // An explicit upper bound wins, but never below the lower
+                // bound: an inverted range is not a shape Play can produce.
+                resultBuilder.setAgeUpper(ageUpperRaw?.coerceAtLeast(low) ?: high)
             }
         }
 
@@ -278,6 +276,14 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "initialize" -> {
                 val useMockData = call.argument<Boolean>("useMockData") ?: false
 
+                // Gates are independent of mock data, so apply them before any
+                // refusal below, and only when supplied: a later initialize()
+                // that omits them must not silently reset the bar back to 18.
+                // iOS keeps its gates the same way.
+                call.argument<List<Int>>("ageGates")?.maxOrNull()?.let {
+                    adultThreshold = it
+                }
+
                 // FakeAgeSignalsManager forges age signals. A shipped release
                 // that reaches it hands a fabricated age gate to real users,
                 // which is the failure this plugin exists to prevent.
@@ -295,11 +301,6 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 useFakeManager = useMockData
                 // Store mock data for use when creating fake manager
                 mockData = call.argument<Map<String, Any?>>("mockData")
-                // Play ignores age gates, but iOS compares against the caller's
-                // highest gate, so honouring it here keeps one `status` check
-                // meaning the same thing on both platforms.
-                adultThreshold =
-                    call.argument<List<Int>>("ageGates")?.maxOrNull() ?: DEFAULT_ADULT_AGE
                 result.success(null)
             }
             "requestAgeSignalsAccess" -> {
@@ -372,6 +373,14 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         // This runs before the real-manager null check so mock mode works even
         // when Play Services / the real Age Signals API is unavailable.
         if (useFakeManager) {
+            // Real Play returns no signals when access was not granted. The
+            // fake manager does not model that, so honour the mocked access
+            // outcome here or a `notShared` mock would still hand back a band.
+            if (buildMockAccessResult(mockData).ageSignalsStatus() != AgeSignalsStatus.SHARED) {
+                result.success(resultToMap(AgeSignalsResult.builder().build()))
+                return
+            }
+
             val fakeManager = createFakeManager()
             val request = AgeSignalsRequest.builder().build()
 
@@ -469,6 +478,16 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         debuggable: () -> Boolean
     ): Boolean = useMockData && !debuggable()
 
+    /**
+     * The highest of Play's documented bands (0-12, 13-15, 16-17) that sits
+     * entirely below [threshold]. Used for implied mock bands so the harness
+     * only ever emits ranges the real API could return.
+     */
+    internal fun supervisedBandBelow(threshold: Int): Pair<Int, Int> = when {
+        threshold > 15 -> 13 to 15
+        else -> 0 to 12
+    }
+
     private fun isDebuggable(): Boolean =
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
@@ -476,8 +495,5 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         /** Lower bound of Google Play's open-ended adult band. */
         const val DEFAULT_ADULT_AGE = 18
 
-        /** Bounds of the band mocked for supervised-family scenarios. */
-        const val DEFAULT_SUPERVISED_LOWER = 13
-        const val DEFAULT_SUPERVISED_UPPER = 15
     }
 }

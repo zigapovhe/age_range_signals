@@ -105,6 +105,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _isInitialized = false;
       _result = null;
       _error = null;
+      _accessOutcome = null;
+      _currentScenario = 'Default (Supervised 13-15)';
     });
     await _initializePlugin();
   }

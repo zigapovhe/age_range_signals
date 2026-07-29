@@ -23,12 +23,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         case "initialize":
             handleInitialize(call: call, result: result)
         case "requestAgeSignalsAccess":
-            // Play's separate access grant has no Apple counterpart: consent
-            // is gathered by requestAgeRange() inside checkAgeSignals, and a
-            // refusal surfaces there as the "declined" status. "shared" is
-            // the honest answer and keeps one call sequence working on both
-            // platforms.
-            result("shared")
+            handleRequestAgeSignalsAccess(result: result)
         case "checkAgeSignals":
             handleCheckAgeSignals(result: result)
         case "getRequiredRegulatoryFeatures":
@@ -38,6 +33,42 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    /// Play's separate access grant has no Apple counterpart: consent is
+    /// gathered by requestAgeRange() inside checkAgeSignals, and a refusal
+    /// surfaces there as the "declined" status. "shared" is the honest answer
+    /// and keeps one call sequence working on both platforms, but it is only
+    /// honest when checkAgeSignals() could actually succeed: reporting access
+    /// on a device that cannot serve it would make the guard useless as a
+    /// pre-flight, which is what Android uses it for.
+    private func handleRequestAgeSignalsAccess(result: @escaping FlutterResult) {
+        guard #available(iOS 26.0, *) else {
+            result(FlutterError(
+                code: "UNSUPPORTED_PLATFORM",
+                message: "DeclaredAgeRange API requires iOS 26.0 or later",
+                details: nil
+            ))
+            return
+        }
+        #if !canImport(DeclaredAgeRange)
+        result(FlutterError(
+            code: "UNSUPPORTED_PLATFORM",
+            message: "DeclaredAgeRange API requires iOS 26.0 or later",
+            details: nil
+        ))
+        return
+        #else
+        guard !ageGates.isEmpty else {
+            result(FlutterError(
+                code: "NOT_INITIALIZED",
+                message: "Age gates not configured. Call initialize() first with age gates.",
+                details: nil
+            ))
+            return
+        }
+        result("shared")
+        #endif
     }
 
     private func handleInitialize(call: FlutterMethodCall, result: @escaping FlutterResult) {

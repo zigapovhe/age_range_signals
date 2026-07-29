@@ -340,6 +340,9 @@ try {
 If your app is strictly 18+, set a single gate at 18 so the API classifies the user above/below that threshold.
 
 ```dart
+import 'dart:io';
+import 'package:age_range_signals/age_range_signals.dart';
+
 // One gate at 18. Pass it on both platforms: iOS requires it, and Android
 // uses your highest gate as the bar for `verified`.
 await AgeRangeSignals.instance.initialize(ageGates: [18]);
@@ -356,12 +359,13 @@ final result = await AgeRangeSignals.instance.checkAgeSignals();
 // `verified` only says the band clears your gate. Any tier can reach it,
 // including a self-declaration, so a strictly 18+ app should decide what
 // assurance it will accept rather than leaving it implicit.
-const acceptable = {AgeRangeSource.tierC, AgeRangeSource.tierD};
-// Discriminate on the platform, not on a null tier: Android also reports
-// null for a tier this plugin version does not recognise, and that band is
-// still judged by age, so a null check alone would admit unknown assurance.
-final assuranceOk =
-    Platform.isIOS || acceptable.contains(result.ageRangeSource);
+// Apply an assurance floor on both platforms. Android exposes the Play tier;
+// iOS exposes the declaration type, where a bare self-declaration is the
+// weakest signal Apple reports.
+const acceptableTiers = {AgeRangeSource.tierC, AgeRangeSource.tierD};
+final assuranceOk = Platform.isIOS
+    ? result.source != AgeDeclarationSource.selfDeclared
+    : acceptableTiers.contains(result.ageRangeSource);
 
 if (result.status == AgeSignalsStatus.verified && assuranceOk) {
   // User meets 18+ requirement at an assurance level you accept
@@ -498,14 +502,16 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 | status | ageRangeSource | ageLower/ageUpper | installId | Derived from |
 |--------|----------------|-------------------|-----------|--------------|
-| `verified` | any tier | Populated / `null`† | `null` or populated | Band starts at or above your highest gate |
+| `verified` | any tier | Populated / `null` or populated† | `null` or populated | Band starts at or above your highest gate |
 | `supervised` | `tierB` | Populated / Populated† | Populated | Parent-managed account below your highest gate |
 | `supervised` | `tierA`/`tierC`/`tierD` | Populated / Populated† | `null` | Unsupervised user below your highest gate |
 | `supervisedApprovalPending` | `tierB` | Populated / Populated† | Populated | Awaiting parent approval of a significant change |
 | `supervisedApprovalDenied` | `tierB` | Populated / Populated† | Populated | Parent denied the change; use previous approved state |
 | `unknown` | `null` or any tier | `null` / `null` | `null` | Access not shared, verification required, or no age band reported |
 
-**†Edge case:** `ageUpper` is `null` for the open-ended 18+ band regardless of tier.
+**†Edge case:** `ageUpper` is `null` only for Play's open-ended 18+ band. With a lower gate a `verified` result can carry a closed band, e.g. gates `[13]` and Play's 16-17 band give `ageLower: 16, ageUpper: 17`, so do not use `ageUpper == null` as a proxy for "adult".
+
+**Note:** `supervisedApprovalPending` and `supervisedApprovalDenied` are reported whatever the age, including when Play has established no band yet, so their bounds can be `null`.
 
 **Note:** Play reports fixed bands (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates, so a gate that does not sit on a band edge quantises upward on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Prefer gates on band edges (13, 16, 18) if you need the two platforms to agree exactly.
 

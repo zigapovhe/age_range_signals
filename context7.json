@@ -46,7 +46,7 @@
     "`requestAgeSignalsAccess()` returns `AgeSignalsAccessStatus`: shared, notShared (a decline, not an error), verificationRequired (send the user to the Play Store; no in-app flow), unknown. iOS always returns shared.",
     "`AgeRangeSource` (Android), weakest to strongest: tierA self-declared, tierB parent- or guardian-managed, tierC assessed via credit card, email, selfie, government ID or tax ID, tierD government ID plus selfie or a digital ID.",
     "`SignificantChangeStatus` (Android, supervised users) is approved, pending or declined. Pending or declined reports supervisedApprovalPending/Denied whatever the age, because an outstanding guardian decision is actionable either way.",
-    "`ageLower`/`ageUpper` are null when nothing was shared. A `verified` result always has `ageLower` set, since that is how the verdict is derived, and `ageUpper` is null for the open-ended top band.",
+    "`ageLower`/`ageUpper` are null when nothing was shared. A `verified` result always has `ageLower` set. `ageUpper` is null only for Play's open-ended 18+ band, so never use it as a proxy for adult.",
     "Android is ActivityAware because Play hosts a sharing prompt. Without an attached Activity, `requestAgeSignalsAccess()` throws `ApiErrorException` with code `PRESENTATION_CONTEXT_UNAVAILABLE`.",
     "`useMockData: true` throws `MockDataNotAllowedException` in non-debuggable Android builds. The fake manager forges age signals, so never suggest enabling it in release; build a debuggable variant instead.",
     "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real device on iOS 26.2+.",
