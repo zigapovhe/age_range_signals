@@ -331,4 +331,40 @@ class ResultMapTest {
         val band18 = plugin.buildMockResult(mapOf("status" to "supervised", "ageLower" to 18))
         assertEquals("supervised", plugin.resultToMap(band18)["status"])
     }
+
+    // --- name <-> constant tables ---
+
+    @Test
+    fun mappingTables_roundTripInBothDirections() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        for (tier in listOf(
+            AgeRangeSource.TIER_A,
+            AgeRangeSource.TIER_B,
+            AgeRangeSource.TIER_C,
+            AgeRangeSource.TIER_D,
+        )) {
+            val name = plugin.resultToMap(
+                plugin.buildMockResult(mapOf("ageRangeSource" to plugin.tierName(tier))),
+            )["ageRangeSource"]
+            assertEquals(plugin.tierName(tier), name)
+        }
+
+        for (name in listOf("shared", "notShared", "verificationRequired", "unknown")) {
+            assertEquals(name, plugin.accessStatusName(plugin.accessStatusFromName(name)))
+        }
+    }
+
+    @Test
+    fun unrecognisedAccessStatusFailsClosed() {
+        // A typo in a mock must not silently resolve to `shared`.
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertEquals(
+            "unknown",
+            plugin.accessStatusName(plugin.accessStatusFromName("sharedd")),
+        )
+        // An omitted value still defaults to shared.
+        assertEquals("shared", plugin.accessStatusName(plugin.accessStatusFromName(null)))
+    }
 }

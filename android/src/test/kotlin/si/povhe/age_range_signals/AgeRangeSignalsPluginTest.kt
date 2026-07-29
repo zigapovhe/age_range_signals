@@ -1,6 +1,8 @@
 package si.povhe.age_range_signals
 
 import android.app.Activity
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsStatus
 import com.google.android.play.agesignals.model.SignificantChangeStatus
@@ -233,27 +235,27 @@ internal class AgeRangeSignalsPluginTest {
     // --- Mock data is refused outside debuggable builds ---
 
     @Test
-    fun shouldRejectMockData_onlyBlocksMockDataInReleaseBuilds() {
+    fun isDebuggable_readsTheFlagOffTheApplicationInfo() {
+        // The bit-mask is what stands between FakeAgeSignalsManager and a
+        // shipped release, so assert the read itself rather than boolean AND.
         val plugin = AgeRangeSignalsPlugin()
 
-        // The case that matters: a shipped build that would otherwise forge
-        // its own age gate for real users.
-        assertTrue(plugin.shouldRejectMockData(useMockData = true) { false })
-
-        assertFalse(plugin.shouldRejectMockData(useMockData = true) { true })
-        assertFalse(plugin.shouldRejectMockData(useMockData = false) { false })
-        assertFalse(plugin.shouldRejectMockData(useMockData = false) { true })
+        assertTrue(plugin.isDebuggable(contextWithFlags(ApplicationInfo.FLAG_DEBUGGABLE)))
+        assertFalse(plugin.isDebuggable(contextWithFlags(0)))
+        // A release build still carries other flags; only the debuggable bit
+        // may satisfy the check.
+        assertFalse(plugin.isDebuggable(contextWithFlags(ApplicationInfo.FLAG_INSTALLED)))
+        assertTrue(
+            plugin.isDebuggable(
+                contextWithFlags(ApplicationInfo.FLAG_INSTALLED or ApplicationInfo.FLAG_DEBUGGABLE),
+            ),
+        )
     }
 
-    @Test
-    fun shouldRejectMockData_doesNotProbeTheBuildTypeWhenMockDataIsOff() {
-        // isDebuggable() reads the Android Context, so it must not be consulted
-        // on the common path where no mock data was requested.
-        val plugin = AgeRangeSignalsPlugin()
-        var probed = false
-
-        plugin.shouldRejectMockData(useMockData = false) { probed = true; true }
-
-        assertFalse(probed)
+    private fun contextWithFlags(flags: Int): Context {
+        val info = ApplicationInfo().apply { this.flags = flags }
+        val context = Mockito.mock(Context::class.java)
+        Mockito.`when`(context.applicationInfo).thenReturn(info)
+        return context
     }
 }

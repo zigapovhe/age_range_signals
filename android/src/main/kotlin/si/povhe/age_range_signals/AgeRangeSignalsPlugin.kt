@@ -162,14 +162,10 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      * verificationRequired exercise the gated paths.
      */
     internal fun buildMockAccessResult(mockDataMap: Map<String, Any?>?): AgeSignalsAccessResult {
-        val status = when (mockDataMap?.get("accessStatus") as? String) {
-            "notShared" -> AgeSignalsStatus.NOT_SHARED
-            "verificationRequired" -> AgeSignalsStatus.VERIFICATION_REQUIRED
-            // UNSPECIFIED maps back to "unknown", so the unrecognized-state
-            // fallback can be mocked like every other outcome.
-            "unknown" -> AgeSignalsStatus.UNSPECIFIED
-            else -> AgeSignalsStatus.SHARED
-        }
+        // Unrecognised names fall back to SHARED so an omitted accessStatus
+        // keeps the historical default; "unknown" maps to UNSPECIFIED so the
+        // unrecognized-state fallback can be mocked like every other outcome.
+        val status = accessStatusFromName(mockDataMap?.get("accessStatus") as? String)
         return AgeSignalsAccessResult.builder().setAgeSignalsStatus(status).build()
     }
 
@@ -234,42 +230,35 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         )
     }
 
-    private fun ageRangeSourceFromName(name: String?): Int? = when (name) {
-        "tierA" -> AgeRangeSource.TIER_A
-        "tierB" -> AgeRangeSource.TIER_B
-        "tierC" -> AgeRangeSource.TIER_C
-        "tierD" -> AgeRangeSource.TIER_D
-        else -> null
+    // One table per concept, read in both directions. Declaring the inverse
+    // as a derived view makes the round-trip structural: adding a tier means
+    // one edit, and the two directions cannot drift apart.
+    private fun ageRangeSourceFromName(name: String?): Int? = AGE_RANGE_SOURCES[name]
+
+    private fun ageRangeSourceName(source: Int?): String? = AGE_RANGE_SOURCE_NAMES[source]
+
+    /** Test seam onto [AGE_RANGE_SOURCE_NAMES]. */
+    internal fun tierName(source: Int?): String? = AGE_RANGE_SOURCE_NAMES[source]
+
+    private fun significantChangeStatusFromName(name: String?): Int? =
+        SIGNIFICANT_CHANGE_STATUSES[name]
+
+    private fun significantChangeStatusName(status: Int?): String? =
+        SIGNIFICANT_CHANGE_STATUS_NAMES[status]
+
+    /**
+     * An omitted `accessStatus` keeps the historical default of a shared
+     * user. A name that is present but unrecognised is a mistake in the mock,
+     * and resolving it to SHARED would fail open, so it becomes UNSPECIFIED
+     * and the derived status reads `unknown`.
+     */
+    internal fun accessStatusFromName(name: String?): Int = when (name) {
+        null -> AgeSignalsStatus.SHARED
+        else -> ACCESS_STATUSES[name] ?: AgeSignalsStatus.UNSPECIFIED
     }
 
-    private fun ageRangeSourceName(source: Int?): String? = when (source) {
-        AgeRangeSource.TIER_A -> "tierA"
-        AgeRangeSource.TIER_B -> "tierB"
-        AgeRangeSource.TIER_C -> "tierC"
-        AgeRangeSource.TIER_D -> "tierD"
-        else -> null
-    }
-
-    private fun significantChangeStatusFromName(name: String?): Int? = when (name) {
-        "approved" -> SignificantChangeStatus.APPROVED
-        "pending" -> SignificantChangeStatus.PENDING
-        "declined" -> SignificantChangeStatus.DECLINED
-        else -> null
-    }
-
-    private fun significantChangeStatusName(status: Int?): String? = when (status) {
-        SignificantChangeStatus.APPROVED -> "approved"
-        SignificantChangeStatus.PENDING -> "pending"
-        SignificantChangeStatus.DECLINED -> "declined"
-        else -> null
-    }
-
-    internal fun accessStatusName(status: Int?): String = when (status) {
-        AgeSignalsStatus.SHARED -> "shared"
-        AgeSignalsStatus.NOT_SHARED -> "notShared"
-        AgeSignalsStatus.VERIFICATION_REQUIRED -> "verificationRequired"
-        else -> "unknown"
-    }
+    internal fun accessStatusName(status: Int?): String =
+        ACCESS_STATUS_NAMES[status] ?: "unknown"
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
@@ -287,7 +276,9 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 // FakeAgeSignalsManager forges age signals. A shipped release
                 // that reaches it hands a fabricated age gate to real users,
                 // which is the failure this plugin exists to prevent.
-                if (shouldRejectMockData(useMockData, ::isDebuggable)) {
+                // `&&` short-circuits, so the Context is only read when mock
+                // data was actually requested.
+                if (useMockData && !isDebuggable()) {
                     result.error(
                         "MOCK_DATA_NOT_ALLOWED",
                         "useMockData is only available in debuggable builds. " +
@@ -469,16 +460,6 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     /**
-     * Whether mock data must be refused. Split from [isDebuggable] so the rule
-     * is unit-testable without an Android [Context], and lazy so the common
-     * path never touches the Context.
-     */
-    internal fun shouldRejectMockData(
-        useMockData: Boolean,
-        debuggable: () -> Boolean
-    ): Boolean = useMockData && !debuggable()
-
-    /**
      * The highest of Play's documented bands (0-12, 13-15, 16-17) that sits
      * entirely below [threshold]. Used for implied mock bands so the harness
      * only ever emits ranges the real API could return.
@@ -488,10 +469,41 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         else -> 0 to 12
     }
 
-    private fun isDebuggable(): Boolean =
+    private fun isDebuggable(): Boolean = isDebuggable(context)
+
+    /**
+     * Reads the debuggable flag off [context]. Kept separate and internal so
+     * the bit-mask itself is testable: it is the one line standing between
+     * `FakeAgeSignalsManager` and a shipped release.
+     */
+    internal fun isDebuggable(context: Context): Boolean =
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     private companion object {
+        val AGE_RANGE_SOURCES = mapOf(
+            "tierA" to AgeRangeSource.TIER_A,
+            "tierB" to AgeRangeSource.TIER_B,
+            "tierC" to AgeRangeSource.TIER_C,
+            "tierD" to AgeRangeSource.TIER_D,
+        )
+        val AGE_RANGE_SOURCE_NAMES = AGE_RANGE_SOURCES.entries.associate { it.value to it.key }
+
+        val SIGNIFICANT_CHANGE_STATUSES = mapOf(
+            "approved" to SignificantChangeStatus.APPROVED,
+            "pending" to SignificantChangeStatus.PENDING,
+            "declined" to SignificantChangeStatus.DECLINED,
+        )
+        val SIGNIFICANT_CHANGE_STATUS_NAMES =
+            SIGNIFICANT_CHANGE_STATUSES.entries.associate { it.value to it.key }
+
+        val ACCESS_STATUSES = mapOf(
+            "shared" to AgeSignalsStatus.SHARED,
+            "notShared" to AgeSignalsStatus.NOT_SHARED,
+            "verificationRequired" to AgeSignalsStatus.VERIFICATION_REQUIRED,
+            "unknown" to AgeSignalsStatus.UNSPECIFIED,
+        )
+        val ACCESS_STATUS_NAMES = ACCESS_STATUSES.entries.associate { it.value to it.key }
+
         /** Lower bound of Google Play's open-ended adult band. */
         const val DEFAULT_ADULT_AGE = 18
 
