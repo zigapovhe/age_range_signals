@@ -13,6 +13,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - [Platform Support](#platform-support)
 - [Choosing Your Integration Level](#choosing-your-integration-level)
 - [Regulatory Status](#regulatory-status)
+- [Migrating to 0.8.0](#migrating-to-080)
 - [Platform Setup](#platform-setup)
     - [Android](#android)
     - [iOS](#ios)
@@ -95,6 +96,27 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 - **Texas (SB 2420):** In effect since June 4, 2026. The Fifth Circuit [stayed](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) the December 2025 injunction pending appeal, and in July 2026 the Supreme Court [declined to intervene](https://www.scotusblog.com/2026/07/supreme-court-allows-texas-to-enforce-law-requiring-age-verification-and-parental-consent-on-app/), so the APIs return live data for Texas users. The merits appeal is still pending. See [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
 - **Utah and Louisiana:** Statutory obligations are delayed, but **Apple already shares age categories** for these users. Utah's ASAA moved to May 6, 2027 ([HB 498](https://www.wiley.law/wiley-connect/utah-amends-app-store-accountability-act-asaa-key-obligations-delayed-until-may-6-2027), which also removed the AG's enforcement authority, leaving only a private right of action for minors and their guardians); Louisiana moved to July 1, 2027 ([HB 977](https://www.alstonprivacy.com/louisiana-delays-app-store-accountability-effective-date-to-july-2027/)). Independently of those dates, Apple shares age categories through DeclaredAgeRange for **new Apple Accounts created in Utah since May 6, 2026 and in Louisiana since July 1, 2026**, so `checkAgeSignals()` can return real data for those users today. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 
+## Migrating to 0.8.0
+
+The call flow changed: request access first, and read signals only if it was granted. The same code works on both platforms.
+
+```dart
+// Before
+final result = await AgeRangeSignals.instance.checkAgeSignals();
+
+// After
+final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+if (access == AgeSignalsAccessStatus.shared) {
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+}
+```
+
+On Android, skipping the access call means Play never prompts, so `checkAgeSignals()` reports `unknown`. Also pass `ageGates` on Android now: it sets the bar for `verified`.
+
+On iOS nothing changes behaviourally, since access is always `shared` and Apple gathers consent inside `checkAgeSignals()` itself. One thing to watch: `requestAgeSignalsAccess()` throws `UnsupportedPlatformException` below iOS 26.0 and `NotInitializedException` when no gates were supplied, which are the same exceptions `checkAgeSignals()` used to raise. If your `try` only wrapped `checkAgeSignals()`, widen it to cover both calls.
+
+Every other breaking change lists its migration step in the [CHANGELOG](CHANGELOG.md). Two notes for older versions: the `mostRecentApprovalDate` rename only affects 0.7.x, since the field arrived in 0.7.0, and coming from 0.5.x or earlier also needs `minSdk` 23.
+
 ## Platform Setup
 
 ### Android
@@ -140,9 +162,9 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 
 ### Basic Example
 
-Enough to paste into an app and run. Call `initialize()` before
-`checkAgeSignals()` on both platforms: iOS requires the age gates, and
-Android uses your highest gate as the bar for `verified`.
+Enough to paste into an app and run. Call `initialize()` on both platforms,
+then request access before reading signals: on Android, skipping the access
+call means Play never prompts and `checkAgeSignals()` reports `unknown`.
 
 ```dart
 import 'package:age_range_signals/age_range_signals.dart';
@@ -150,6 +172,14 @@ import 'package:age_range_signals/age_range_signals.dart';
 await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
 
 try {
+  final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+  if (access != AgeSignalsAccessStatus.shared) {
+    // notShared is a decline, not an error. On verificationRequired, point
+    // the user at the Play Store to finish verifying.
+    showAgeAppropriateContent(null, null);
+    return;
+  }
+
   final result = await AgeRangeSignals.instance.checkAgeSignals();
 
   if (result.status == AgeSignalsStatus.verified) {
@@ -173,7 +203,8 @@ the specific exception types, shown next.
 ```dart
 import 'package:age_range_signals/age_range_signals.dart';
 
-// Initialize the plugin (required for iOS, optional for Android)
+// Initialize on both platforms: iOS requires the gates, and Android uses
+// your highest gate as the bar for `verified`.
 // Age gates represent your meaningful thresholds (e.g., child/teen/adult).
 await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
 
@@ -204,6 +235,7 @@ try {
     case AgeSignalsStatus.supervisedApprovalDenied:
       print('Guardian denied access');
       break;
+    // ignore: deprecated_member_use
     case AgeSignalsStatus.declared:
       print('User declared their age through Google Play');
       break;
@@ -418,11 +450,11 @@ Main class for interacting with the plugin.
 #### Methods
 
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})` - Initializes the plugin.
-  - `ageGates`: Age thresholds (e.g., `[13, 16, 18]`). Required on iOS. Play ignores them, but Android uses your highest gate as the bar for `verified`, falling back to 18 when omitted, so pass them on both platforms. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
+  - `ageGates`: Age thresholds (e.g., `[13, 16, 18]`). Required on iOS. Play ignores them, but Android uses your highest gate as the bar for `verified`, using 18 until you supply gates and keeping them if a later call omits them, so pass them on both platforms. **iOS accepts 1 to 3 gates**; passing 0 or more than 3 gates throws an error (`ApiErrorException`). Gates must be at least 2 years apart (Apple rejects e.g. `[13, 14]` with an invalid-request error).
   - `useMockData`: (Android only) Set to `true` to use Google's `FakeAgeSignalsManager` for testing. Ignored on iOS. Defaults to `false`.
   - `mockData`: (Android only) Optional custom mock data configuration using Google's official testing utilities. Ignored on iOS. If not provided, defaults to supervised user (13-15).
 
-- `Future<AgeSignalsAccessStatus> requestAgeSignalsAccess()` - Requests access to the user's age signals (age-signals 0.0.4). On Android this may show Google Play's in-app age sharing prompt over your activity; only call `checkAgeSignals()` when the result is `shared`. A decline is not an error - it comes back as `notShared`. In mandatory-verification regions Play skips the prompt entirely: already-verified and supervised users come back `shared`, while unverified users come back `verificationRequired` and complete verification in the Play Store app. On iOS this always returns `shared` without showing anything, because Apple gathers consent inside `checkAgeSignals()` itself; a refusal surfaces there as `AgeSignalsStatus.declined`.
+- `Future<AgeSignalsAccessStatus> requestAgeSignalsAccess()` - Requests access to the user's age signals (age-signals 0.0.4). On Android this may show Google Play's in-app age sharing prompt over your activity; only call `checkAgeSignals()` when the result is `shared`. A decline is not an error - it comes back as `notShared`. In mandatory-verification regions Play skips the prompt entirely: already-verified and supervised users come back `shared`, while unverified users come back `verificationRequired` and complete verification in the Play Store app. On iOS it returns `shared` without showing anything, because Apple gathers consent inside `checkAgeSignals()` itself; a refusal surfaces there as `AgeSignalsStatus.declined`. It is not unconditional: iOS throws `UnsupportedPlatformException` below 26.0 and `NotInitializedException` when `initialize()` supplied no gates, so it doubles as a pre-flight there.
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user. On Android, call `requestAgeSignalsAccess()` first; without shared access the API returns no signals and `status` is `unknown`.
 
@@ -515,7 +547,7 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 **Note:** Play reports fixed bands (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates, so a gate that does not sit on a band edge quantises upward on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Prefer gates on band edges (13, 16, 18) if you need the two platforms to agree exactly.
 
-**Note:** `ageRangeSource` says **how** an age was established, not what it is. A `tierD` result means an ID was checked, and that ID can read 12, so the tier is never the verdict on its own. `verified` and `supervised` split at your highest configured age gate, defaulting to 18 when `initialize()` is called without gates. iOS applies the same comparison, so one `status` check means the same thing on both platforms.
+**Note:** `ageRangeSource` says **how** an age was established, not what it is. A `tierD` result means an ID was checked, and that ID can read 12, so the tier is never the verdict on its own. `verified` and `supervised` split at your highest configured age gate. Android uses 18 until you supply gates, and a later `initialize()` that omits them keeps the gates you already set. iOS applies the same comparison, so one `status` check means the same thing on both platforms.
 
 **Note:** Android never returns `declined`. Play reports `notShared` both for a genuine refusal and for a user who was never asked because their region is out of scope, and the two are indistinguishable, so the plugin reports `unknown` rather than asserting an intent. Only iOS reports a real refusal.
 
@@ -540,7 +572,7 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 Enum representing the verification status:
 
-- `verified` - The reported age range starts at or above your highest configured age gate (both platforms; Android falls back to 18 when no gates are supplied). Any tier can reach it: `ageRangeSource` says how the age was established, not what it is
+- `verified` - The reported age range starts at or above your highest configured age gate (both platforms; Android uses 18 until you supply gates). Any tier can reach it: `ageRangeSource` says how the age was established, not what it is
 - `supervised` - The reported age range falls below your highest configured age gate. Same rule on both platforms. This is the age verdict, not the supervision relationship: read `ageRangeSource == AgeRangeSource.tierB` for that
 - `supervisedApprovalPending` - User is supervised and a significant change awaits parent approval (Android only)
 - `supervisedApprovalDenied` - User is supervised and the parent denied the significant change (Android only)
@@ -552,7 +584,7 @@ Enum representing the verification status:
 
 Enum returned by `requestAgeSignalsAccess()` (age-signals 0.0.4):
 
-- `shared` - Age signals are shared; proceed to `checkAgeSignals()`. Always the answer on iOS, where consent is gathered inside the check itself
+- `shared` - Age signals are shared; proceed to `checkAgeSignals()`. The only value iOS returns, where consent is gathered inside the check itself; iOS throws instead of returning another value
 - `notShared` - The user declined or previously chose not to share, a parent rejected sharing, or the user is not eligible. Not an error
 - `verificationRequired` - The user must verify their age in the Play Store app first (mandatory-verification regions, when the age is not already established); Play does not show the in-app prompt
 - `unknown` - Play reported a state this plugin version does not recognize

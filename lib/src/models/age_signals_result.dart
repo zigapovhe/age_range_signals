@@ -250,14 +250,18 @@ enum AgeSignalsStatus {
   /// The reported age range starts at or above your highest configured age
   /// gate.
   ///
-  /// Both platforms apply the same rule; Android falls back to 18 when
-  /// `initialize()` is called without gates. Play reports fixed bands
-  /// (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates,
-  /// so a gate off a band edge quantises upward on Android: with a gate at
-  /// 15 a 15-year-old is `verified` on iOS but `supervised` on Android. Any tier can reach this, so a
-  /// self-declared band clears the gate just as an ID-verified one does.
-  /// Check [AgeSignalsResult.ageRangeSource] if you need a minimum assurance
-  /// level.
+  /// Both platforms apply the same rule. Android uses 18 until you supply
+  /// gates, and a later `initialize()` that omits them keeps the gates you
+  /// already set.
+  ///
+  /// Play reports fixed bands (0-12, 13-15, 16-17, 18+) while iOS buckets
+  /// against your actual gates, so a gate off a band edge quantises upward
+  /// on Android: with a gate at 15, a 15-year-old is `verified` on iOS but
+  /// `supervised` on Android.
+  ///
+  /// Any tier can reach this, so a self-declared band clears the gate just
+  /// as an ID-verified one does. Check [AgeSignalsResult.ageRangeSource] if
+  /// you need a minimum assurance level.
   verified,
 
   /// User's age could not be determined.

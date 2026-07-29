@@ -140,13 +140,22 @@ class AgeRangeSignals {
   /// verification in the Play Store app before signals become available.
   ///
   /// On iOS this returns [AgeSignalsAccessStatus.shared] without showing
-  /// anything: Apple gathers consent inside [checkAgeSignals] itself, and a
-  /// refusal surfaces there as [AgeSignalsStatus.declined]. Returning
-  /// shared keeps a single call sequence working on both platforms.
+  /// anything, because Apple gathers consent inside [checkAgeSignals]
+  /// itself and a refusal surfaces there as [AgeSignalsStatus.declined].
+  /// Returning shared keeps a single call sequence working on both
+  /// platforms. It is not unconditional, though: iOS throws rather than
+  /// reporting access it could not honour, so this call also acts as a
+  /// pre-flight there.
   ///
-  /// Throws [AgeSignalsException] subclasses on API errors, including
-  /// [ApiErrorException] with code `PRESENTATION_CONTEXT_UNAVAILABLE` when
-  /// no activity is available to present the prompt on (Android).
+  /// Throws [AgeSignalsException] subclasses on API errors:
+  ///
+  /// * [ApiErrorException] with code `PRESENTATION_CONTEXT_UNAVAILABLE`
+  ///   when no activity is available to present the prompt on (Android).
+  /// * [UnsupportedPlatformException] on iOS below 26.0, where
+  ///   [checkAgeSignals] could not succeed anyway.
+  /// * [NotInitializedException] on iOS when [initialize] has not supplied
+  ///   age gates. Android has no such guard, so call [initialize] first on
+  ///   both platforms.
   Future<AgeSignalsAccessStatus> requestAgeSignalsAccess() {
     return AgeRangeSignalsPlatform.instance.requestAgeSignalsAccess();
   }

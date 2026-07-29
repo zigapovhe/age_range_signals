@@ -46,7 +46,7 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
 
   /// Initializes the plugin with platform-specific configuration.
   ///
-  /// [ageGates] specifies the age thresholds. iOS requires them; Play ignores them, but Android uses the highest gate as the bar for `verified`, falling back to 18.
+  /// [ageGates] specifies the age thresholds. iOS requires them; Play ignores them, but Android uses the highest gate as the bar for `verified`, using 18 until you supply gates and keeping them if a later call omits them.
   /// For example, [13, 16, 18] will allow the app to determine if the user is
   /// under 13, between 13-15, between 16-17, or 18+.
   ///

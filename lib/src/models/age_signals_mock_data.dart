@@ -88,7 +88,8 @@ class AgeSignalsMockData {
   ///
   /// When null, the tier is derived from [status] (verified maps to tierC,
   /// declared to tierA, the supervised family to tierB). The result's
-  /// status is always re-derived from the resolved tier and change status,
+  /// status is always re-derived from the resulting age band measured against
+  /// your highest age gate (plus the supervised approval short-circuit),
   /// exactly as with real API responses, so an explicit tier wins over a
   /// contradictory [status]. Set it to pin a specific tier, e.g. verified
   /// via [AgeRangeSource.tierD].
