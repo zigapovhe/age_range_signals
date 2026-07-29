@@ -1,11 +1,19 @@
 package si.povhe.age_range_signals
 
-import com.google.android.play.agesignals.model.AgeSignalsVerificationStatus
+import android.app.Activity
+import android.content.Context
+import android.content.pm.ApplicationInfo
+import com.google.android.play.agesignals.model.AgeRangeSource
+import com.google.android.play.agesignals.model.AgeSignalsStatus
+import com.google.android.play.agesignals.model.SignificantChangeStatus
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 internal class AgeRangeSignalsPluginTest {
@@ -26,7 +34,7 @@ internal class AgeRangeSignalsPluginTest {
     fun buildMockResult_noMockData_usesDefaultSupervised13to15() {
         val result = AgeRangeSignalsPlugin().buildMockResult(null)
 
-        assertEquals(AgeSignalsVerificationStatus.SUPERVISED, result.userStatus())
+        assertEquals(AgeRangeSource.TIER_B, result.ageRangeSource())
         assertEquals(13, result.ageLower())
         assertEquals(15, result.ageUpper())
     }
@@ -67,11 +75,187 @@ internal class AgeRangeSignalsPluginTest {
     }
 
     @Test
-    fun buildMockResult_verified_hasNoAgeRange() {
+    fun buildMockResult_verified_carriesTheOpenEndedAdultBand() {
+        // The verdict is derived from the band, so a verified mock has to carry
+        // one. Real Play reports the open-ended 18+ band for these users.
         val result = AgeRangeSignalsPlugin().buildMockResult(mapOf("status" to "verified"))
 
-        assertEquals(AgeSignalsVerificationStatus.VERIFIED, result.userStatus())
-        assertNull(result.ageLower())
+        assertEquals(AgeRangeSource.TIER_C, result.ageRangeSource())
+        assertEquals(18, result.ageLower())
         assertNull(result.ageUpper())
+    }
+
+    @Test
+    fun buildMockResult_verifiedWithExplicitLower_reportsOpenEnded18Plus() {
+        // A real verified response carries the open-ended 18+ band; explicit
+        // bounds apply to verified mocks, only the 13-15 default is
+        // supervised/declared-specific.
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "verified", "ageLower" to 18),
+        )
+
+        assertEquals(18, result.ageLower())
+        assertNull(result.ageUpper())
+    }
+
+    // --- Status to tier/change-status derivation ---
+
+    @Test
+    fun buildMockResult_pendingStatus_derivesTierBWithPendingChange() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "supervisedApprovalPending"),
+        )
+
+        assertEquals(AgeRangeSource.TIER_B, result.ageRangeSource())
+        assertEquals(SignificantChangeStatus.PENDING, result.significantChangeStatus())
+    }
+
+    @Test
+    fun buildMockResult_deniedStatus_derivesTierBWithDeclinedChange() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "supervisedApprovalDenied"),
+        )
+
+        assertEquals(AgeRangeSource.TIER_B, result.ageRangeSource())
+        assertEquals(SignificantChangeStatus.DECLINED, result.significantChangeStatus())
+    }
+
+    @Test
+    fun buildMockResult_declaredStatus_derivesTierA() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(mapOf("status" to "declared"))
+
+        assertEquals(AgeRangeSource.TIER_A, result.ageRangeSource())
+        // Self-declared users have an age band but no install id.
+        assertEquals(13, result.ageLower())
+        assertNull(result.installId())
+    }
+
+    @Test
+    fun buildMockResult_unknownStatus_leavesSignalsUnset() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(mapOf("status" to "unknown"))
+
+        assertNull(result.ageRangeSource())
+        assertNull(result.significantChangeStatus())
+        assertNull(result.ageLower())
+        assertNull(result.installId())
+    }
+
+    @Test
+    fun buildMockResult_explicitTier_winsOverStatus() {
+        // A mock pinning the tier is authoritative; the status shorthand only
+        // fills in what was not stated explicitly.
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "verified", "ageRangeSource" to "tierD"),
+        )
+
+        assertEquals(AgeRangeSource.TIER_D, result.ageRangeSource())
+    }
+
+    @Test
+    fun buildMockResult_explicitChangeStatus_isHonored() {
+        val result = AgeRangeSignalsPlugin().buildMockResult(
+            mapOf("status" to "supervised", "significantChangeStatus" to "approved"),
+        )
+
+        assertEquals(AgeRangeSource.TIER_B, result.ageRangeSource())
+        assertEquals(SignificantChangeStatus.APPROVED, result.significantChangeStatus())
+    }
+
+    // --- Access request mocking (new in 0.0.4) ---
+
+    @Test
+    fun buildMockAccessResult_defaultsToShared() {
+        val result = AgeRangeSignalsPlugin().buildMockAccessResult(null)
+
+        assertEquals(AgeSignalsStatus.SHARED, result.ageSignalsStatus())
+    }
+
+    @Test
+    fun buildMockAccessResult_explicitStatus_isHonored() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        val notShared = plugin.buildMockAccessResult(mapOf("accessStatus" to "notShared"))
+        assertEquals(AgeSignalsStatus.NOT_SHARED, notShared.ageSignalsStatus())
+
+        val verification =
+            plugin.buildMockAccessResult(mapOf("accessStatus" to "verificationRequired"))
+        assertEquals(AgeSignalsStatus.VERIFICATION_REQUIRED, verification.ageSignalsStatus())
+
+        // "unknown" round-trips through UNSPECIFIED rather than falling into
+        // the shared default.
+        val unknown = plugin.buildMockAccessResult(mapOf("accessStatus" to "unknown"))
+        assertEquals(AgeSignalsStatus.UNSPECIFIED, unknown.ageSignalsStatus())
+    }
+
+    @Test
+    fun requestAgeSignalsAccess_withoutActivity_reportsPresentationContextUnavailable() {
+        val plugin = AgeRangeSignalsPlugin()
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+
+        plugin.onMethodCall(MethodCall("requestAgeSignalsAccess", null), mockResult)
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("PRESENTATION_CONTEXT_UNAVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
+    }
+
+    @Test
+    fun requestAgeSignalsAccess_withActivityButNoManager_reportsApiNotAvailable() {
+        val plugin = AgeRangeSignalsPlugin()
+        val binding = Mockito.mock(ActivityPluginBinding::class.java)
+        Mockito.`when`(binding.activity).thenReturn(Mockito.mock(Activity::class.java))
+        plugin.onAttachedToActivity(binding)
+
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(MethodCall("requestAgeSignalsAccess", null), mockResult)
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("API_NOT_AVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
+    }
+
+    @Test
+    fun accessStatusName_mapsEveryKnownValueAndFallsBackToUnknown() {
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertEquals("shared", plugin.accessStatusName(AgeSignalsStatus.SHARED))
+        assertEquals("notShared", plugin.accessStatusName(AgeSignalsStatus.NOT_SHARED))
+        assertEquals(
+            "verificationRequired",
+            plugin.accessStatusName(AgeSignalsStatus.VERIFICATION_REQUIRED),
+        )
+        assertEquals("unknown", plugin.accessStatusName(AgeSignalsStatus.UNSPECIFIED))
+        assertEquals("unknown", plugin.accessStatusName(null))
+    }
+
+    // --- Mock data is refused outside debuggable builds ---
+
+    @Test
+    fun isDebuggable_readsTheFlagOffTheApplicationInfo() {
+        // The bit-mask is what stands between FakeAgeSignalsManager and a
+        // shipped release, so assert the read itself rather than boolean AND.
+        val plugin = AgeRangeSignalsPlugin()
+
+        assertTrue(plugin.isDebuggable(contextWithFlags(ApplicationInfo.FLAG_DEBUGGABLE)))
+        assertFalse(plugin.isDebuggable(contextWithFlags(0)))
+        // A release build still carries other flags; only the debuggable bit
+        // may satisfy the check.
+        assertFalse(plugin.isDebuggable(contextWithFlags(ApplicationInfo.FLAG_INSTALLED)))
+        assertTrue(
+            plugin.isDebuggable(
+                contextWithFlags(ApplicationInfo.FLAG_INSTALLED or ApplicationInfo.FLAG_DEBUGGABLE),
+            ),
+        )
+    }
+
+    private fun contextWithFlags(flags: Int): Context {
+        val info = ApplicationInfo().apply { this.flags = flags }
+        val context = Mockito.mock(Context::class.java)
+        Mockito.`when`(context.applicationInfo).thenReturn(info)
+        return context
     }
 }

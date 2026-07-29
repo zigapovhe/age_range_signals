@@ -1,7 +1,7 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
   "projectTitle": "age_range_signals",
-  "description": "Flutter plugin for age verification, wrapping the Google Play Age Signals API on Android and Apple's DeclaredAgeRange API on iOS 26+.",
+  "description": "Flutter plugin for age verification and age gating, wrapping the Google Play Age Signals API on Android and Apple's DeclaredAgeRange API on iOS 26+.",
   "branch": "main",
   "excludeFolders": [
     "android",
@@ -19,25 +19,44 @@
     "example/README.md"
   ],
   "previousVersions": [
-    { "tag": "0.6.2", "title": "0.6.x" },
-    { "tag": "0.5.1", "title": "0.5.x" }
+    {
+      "tag": "0.7.0",
+      "title": "0.7.x"
+    },
+    {
+      "tag": "0.6.2",
+      "title": "0.6.x"
+    },
+    {
+      "tag": "0.5.1",
+      "title": "0.5.x"
+    }
   ],
   "rules": [
-    "This plugin reports age signals the OS already holds. It is not identity verification, document scanning, or KYC, and it never returns a date of birth. Only an age range or bracket status is available.",
+    "This plugin reports age signals the OS already holds. It is not identity verification, document scanning, or KYC, and it never returns a date of birth. Only an age range and an assurance tier are available.",
     "Access the plugin through the singleton `AgeRangeSignals.instance`. There is no public constructor.",
     "Import only `package:age_range_signals/age_range_signals.dart`. The `age_range_signals_method_channel` and `age_range_signals_platform_interface` libraries are federated-plugin plumbing, not application API.",
-    "Calling `AgeRangeSignalsPlatform.instance` directly skips the argument validation in the public wrapper. Subclass `AgeRangeSignalsPlatform` only to stub the plugin in tests.",
-    "Always `await AgeRangeSignals.instance.initialize(...)` before calling `checkAgeSignals()`. Skipping it throws `NotInitializedException`.",
-    "On iOS, `initialize(ageGates: [...])` is required. Apple accepts 1 to 3 gates and requires at least 2 years between consecutive gates, so `[13, 16, 18]` is valid and `[13, 14]` is rejected by the OS. On Android `ageGates` is optional and ignored.",
-    "`checkAgeSignals()` returns an `AgeSignalsResult` whose `status` is `verified`, `supervised`, `declined`, or `unknown`. Switch on all four. There is no `notAvailable` status: unavailability is thrown as `UnsupportedPlatformException`, not returned.",
-    "`ageLower` and `ageUpper` are nullable. They are populated on iOS only when the user consents to share, and on Android only for supervised users. Never assume they are non-null after a `verified` status.",
-    "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real iOS 26.2+ device.",
+    "Since 0.8.0 the flow is two calls: `await requestAgeSignalsAccess()` first, then `checkAgeSignals()` only when it returns `AgeSignalsAccessStatus.shared`. Calling `checkAgeSignals()` alone skips the access grant.",
+    "Call `initialize()` on both platforms. iOS requires `ageGates` and throws `NotInitializedException` without them. Android uses your highest gate as the bar for `verified`, 18 until you supply them, and keeps them if a later call omits them.",
+    "On iOS, Apple accepts 1 to 3 age gates and requires at least 2 years between consecutive gates, so `[13, 16, 18]` is valid and `[13, 14]` is rejected by the OS.",
+    "`status` is the verdict, `ageRangeSource` is the assurance. `verified` means the reported band starts at or above your highest gate; `supervised` means it falls below. Both platforms apply the same rule, so one check means the same thing on each.",
+    "A tier is never proof of age. `AgeRangeSource.tierD` means an ID was checked, and that ID can read 12. Use `ageRangeSource` only to apply a minimum assurance policy, never as the verdict.",
+    "`AgeSignalsStatus` values to handle: verified, unknown, declined, supervised, supervisedApprovalPending, supervisedApprovalDenied. `declared` is deprecated and never returned; read `ageRangeSource == AgeRangeSource.tierA` instead.",
+    "Status platform split: the two supervisedApproval values are Android only, `declined` is iOS only. On Android a refusal surfaces as `AgeSignalsAccessStatus.notShared` from the access call, not as `declined`.",
+    "`requestAgeSignalsAccess()` returns `AgeSignalsAccessStatus`: shared, notShared (a decline, not an error), verificationRequired (send the user to the Play Store), unknown. On iOS it returns shared, or throws below 26.0 or without gates.",
+    "`AgeRangeSource` (Android), weakest to strongest: tierA self-declared, tierB parent- or guardian-managed, tierC assessed via credit card, email, selfie, government ID or tax ID, tierD government ID plus selfie or a digital ID.",
+    "`SignificantChangeStatus` (Android, supervised users) is approved, pending or declined. Pending or declined reports supervisedApprovalPending/Denied whatever the age, because an outstanding guardian decision is actionable either way.",
+    "`ageLower`/`ageUpper` are null when nothing was shared. A `verified` result always has `ageLower` set. `ageUpper` is null only for Play's open-ended 18+ band, so never use it as a proxy for adult.",
+    "Android is ActivityAware because Play hosts a sharing prompt. Without an attached Activity, `requestAgeSignalsAccess()` throws `ApiErrorException` with code `PRESENTATION_CONTEXT_UNAVAILABLE`.",
+    "`useMockData: true` throws `MockDataNotAllowedException` in non-debuggable Android builds. The fake manager forges age signals, so never suggest enabling it in release; build a debuggable variant instead.",
+    "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real device on iOS 26.2+.",
     "Catch `AgeSignalsException` as the base type for all plugin errors. Each carries a `code` and a `details` string holding platform-specific diagnostics.",
-    "Exception subclasses, all suffixed `Exception`: ApiNotAvailable, UnsupportedPlatform, NotInitialized, MissingEntitlement, ApiError, PlayServices, NetworkError, UserNotSignedIn, UserCancelled.",
+    "Exception subclasses, all suffixed `Exception`: ApiNotAvailable, UnsupportedPlatform, NotInitialized, MissingEntitlement, ApiError, PlayServices, NetworkError, UserNotSignedIn, UserCancelled, MockDataNotAllowed.",
     "`getRequiredRegulatoryFeatures()` needs iOS 26.4+ and an Xcode 26.4+ build. It returns an empty set on Android and throws `UnsupportedPlatformException` on older iOS, so an empty set always means no regulatory action is required, never unknown.",
     "`showSignificantUpdateAcknowledgment()` throws `UnsupportedPlatformException` on Android and iOS below 26.4. Apple reports user dismissal with the same error as real unavailability, so `ApiNotAvailableException` is not proof the sheet never showed.",
-    "Platform floors: Android API 23+ with Google Play services; iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features.",
-    "iOS requires Apple's DeclaredAgeRange entitlement. A missing or unapproved entitlement throws `MissingEntitlementException`.",
-    "Google Play policy allows Age Signals data only for delivering age-appropriate experiences. Never route it to advertising, marketing, profiling, or analytics. That risks API termination and app suspension, so never log the result to an analytics SDK."
+    "Platform floors: Android API 23+ with Google Play services; iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features. iOS also requires Apple's DeclaredAgeRange entitlement.",
+    "`AgeSignalsResult.significantChangeApprovalDate` was named `mostRecentApprovalDate` before 0.8.0. The old name still works as a deprecated alias on the result, the mock data, both constructors and `copyWith`.",
+    "Google Play policy allows Age Signals data only for delivering age-appropriate experiences. Never route it to advertising, marketing, profiling, or analytics. That risks API termination and app suspension, so never log the result to an analytics SDK.",
+    "Play reports fixed age bands (0-12, 13-15, 16-17, 18+) while iOS buckets against your actual gates, so a gate off a band edge quantises upward on Android: with a gate at 15 a 15-year-old is verified on iOS but supervised on Android."
   ]
 }

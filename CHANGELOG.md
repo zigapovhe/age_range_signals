@@ -1,3 +1,17 @@
+## 0.8.0
+
+* **Android**: Migrated to `com.google.android.play:age-signals` 0.0.4, which removes `userStatus` in favour of `ageRangeSource` and `significantChangeStatus`.
+* **Android**: Added `requestAgeSignalsAccess()`, the first of 0.0.4's two calls. It may show Play's in-app sharing prompt (the plugin is now `ActivityAware`) and returns `shared`, `notShared` or `verificationRequired`. Call it before `checkAgeSignals()`.
+* **iOS**: `requestAgeSignalsAccess()` returns `shared`, since Apple gathers consent inside `checkAgeSignals()`, but it raises the version and initialization errors `checkAgeSignals()` used to raise. Widen your `try` to cover both calls.
+* **Android**: `AgeSignalsResult` now exposes `ageRangeSource` (tierA-tierD) and `significantChangeStatus`.
+* **Breaking**: `status` now comes from the reported age band measured against your highest age gate, not from the assurance tier. Pass `ageGates` on Android too; it uses 18 until you do.
+* **Breaking**: `AgeSignalsStatus.declared` is deprecated and no longer returned; read `ageRangeSource == AgeRangeSource.tierA` instead.
+* **Breaking**: Renamed `mostRecentApprovalDate` to `significantChangeApprovalDate`, matching the upstream rename. The old name still works as a deprecated alias, and `fromMap` accepts the old key.
+* **Breaking**: `useMockData: true` now throws `MockDataNotAllowedException` outside debuggable builds, so a release can't reach the fake manager.
+* **Android**: `AgeSignalsMockData` gained `accessStatus` plus explicit `ageRangeSource` / `significantChangeStatus` overrides.
+* **Docs**: Refreshed regulatory status (Texas in effect; Utah and Louisiana delayed to 2027, though Apple already shares age categories there; Singapore added). Added badges, `context7.json` and `llms.txt`.
+* **Example**: Added the access step and a mock-data toggle for hitting the real API on device.
+
 ## 0.7.0
 
 * **iOS**: Added `getRequiredRegulatoryFeatures()` (iOS 26.4+), which reports whether Apple requires the current user to share an age range and whether significant-change notification or parental consent applies (#31). Calls are guarded by a 10-second deadline. Throws `UnsupportedPlatformException` below iOS 26.4 (and in apps built with an SDK older than iOS 26.4) so an empty set always means Apple affirmatively reports nothing is required; on Android the set is always empty.
@@ -102,7 +116,7 @@
 ## 0.2.0
 
 * **Android**: ⚠️ **CRITICAL UPDATE** - Bumped Play Age Signals API library version to non-beta stable release `com.google.android.play:age-signals:0.0.1` (thanks to @rokarnus for reporting this in #5)
-  
+
 * **ACTION REQUIRED**: Users must upgrade to version 0.2.0 or higher before January 1, 2026
   * **Why**: From January 1, 2026, all beta versions (0.0.1-beta*) of the Play Age Signals API will throw exceptions
   * **Impact**: Apps using older versions of this plugin (with beta API) will stop working after January 1, 2026

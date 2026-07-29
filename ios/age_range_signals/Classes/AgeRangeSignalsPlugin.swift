@@ -22,6 +22,8 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "initialize":
             handleInitialize(call: call, result: result)
+        case "requestAgeSignalsAccess":
+            handleRequestAgeSignalsAccess(result: result)
         case "checkAgeSignals":
             handleCheckAgeSignals(result: result)
         case "getRequiredRegulatoryFeatures":
@@ -31,6 +33,42 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    /// Play's separate access grant has no Apple counterpart: consent is
+    /// gathered by requestAgeRange() inside checkAgeSignals, and a refusal
+    /// surfaces there as the "declined" status. "shared" is the honest answer
+    /// and keeps one call sequence working on both platforms, but it is only
+    /// honest when checkAgeSignals() could actually succeed: reporting access
+    /// on a device that cannot serve it would make the guard useless as a
+    /// pre-flight, which is what Android uses it for.
+    private func handleRequestAgeSignalsAccess(result: @escaping FlutterResult) {
+        guard #available(iOS 26.0, *) else {
+            result(FlutterError(
+                code: "UNSUPPORTED_PLATFORM",
+                message: "DeclaredAgeRange API requires iOS 26.0 or later",
+                details: nil
+            ))
+            return
+        }
+        #if !canImport(DeclaredAgeRange)
+        result(FlutterError(
+            code: "UNSUPPORTED_PLATFORM",
+            message: "DeclaredAgeRange API requires iOS 26.0 or later",
+            details: nil
+        ))
+        return
+        #else
+        guard !ageGates.isEmpty else {
+            result(FlutterError(
+                code: "NOT_INITIALIZED",
+                message: "Age gates not configured. Call initialize() first with age gates.",
+                details: nil
+            ))
+            return
+        }
+        result("shared")
+        #endif
     }
 
     private func handleInitialize(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -136,13 +174,18 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         source = nil
                     }
 
-                    // Determine status based on highest configured age gate
+                    // Determine status based on highest configured age gate.
+                    // A shared range with no lower bound carries no verdict, so
+                    // report `unknown` rather than treating it as age 0, which
+                    // would silently mean "below every gate". Android reports
+                    // `unknown` for the same shape.
                     let highestGate = ageGates.max() ?? 0
-                    let lowerBound = range.lowerBound ?? 0
-
-                    // User is verified if they meet or exceed the highest age gate
-                    // Otherwise supervised (may be under supervision or below threshold)
-                    let status = lowerBound >= highestGate ? "verified" : "supervised"
+                    let status: String
+                    if let lowerBound = range.lowerBound {
+                        status = lowerBound >= highestGate ? "verified" : "supervised"
+                    } else {
+                        status = "unknown"
+                    }
 
                     let parentalControls = self.parentalControlNames(range.activeParentalControls)
 
@@ -249,7 +292,9 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             "source": source as Any? ?? NSNull(),
             "installId": NSNull(),
             "activeParentalControls": activeParentalControls as Any? ?? NSNull(),
-            "mostRecentApprovalDate": NSNull()
+            "ageRangeSource": NSNull(),
+            "significantChangeStatus": NSNull(),
+            "significantChangeApprovalDate": NSNull()
         ]
     }
 

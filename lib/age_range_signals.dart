@@ -8,10 +8,12 @@ library;
 import 'age_range_signals_platform_interface.dart';
 import 'src/exceptions/age_signals_exception.dart';
 import 'src/models/age_regulatory_feature.dart';
+import 'src/models/age_signals_access_status.dart';
 import 'src/models/age_signals_result.dart';
 import 'src/models/age_signals_mock_data.dart';
 
 export 'src/models/age_signals_result.dart';
+export 'src/models/age_signals_access_status.dart';
 export 'src/models/age_signals_mock_data.dart';
 export 'src/exceptions/age_signals_exception.dart';
 export 'src/models/age_regulatory_feature.dart';
@@ -23,11 +25,17 @@ export 'src/models/age_regulatory_feature.dart';
 ///
 /// Example usage:
 /// ```dart
-/// // Initialize with age gates (iOS only, optional on Android)
+/// // Initialize with age gates (required on iOS, and used on Android as the bar for `verified`)
 /// await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
 ///
-/// // Check age signals
+/// // Request access, then check age signals
 /// try {
+///   final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+///   if (access != AgeSignalsAccessStatus.shared) {
+///     print('No age signals to read: $access');
+///     return;
+///   }
+///
 ///   final result = await AgeRangeSignals.instance.checkAgeSignals();
 ///
 ///   switch (result.status) {
@@ -91,7 +99,7 @@ class AgeRangeSignals {
   ///
   /// // For production with real APIs
   /// await AgeRangeSignals.instance.initialize(
-  ///   ageGates: [13, 16, 18],  // Required for iOS
+  ///   ageGates: [13, 16, 18],  // Both platforms
   ///   useMockData: false,
   /// );
   /// ```
@@ -107,10 +115,59 @@ class AgeRangeSignals {
     );
   }
 
+  /// Requests access to the current user's age signals (Android).
+  ///
+  /// Since age-signals 0.0.4, Google Play splits age signals across two
+  /// calls: this one asks for access - showing Play's in-app age sharing
+  /// prompt when the user's Play settings call for asking first - and
+  /// [checkAgeSignals] then reads the signals. Call this before
+  /// [checkAgeSignals] and only read signals once access is
+  /// [AgeSignalsAccessStatus.shared]:
+  ///
+  /// ```dart
+  /// final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+  /// if (access == AgeSignalsAccessStatus.shared) {
+  ///   final result = await AgeRangeSignals.instance.checkAgeSignals();
+  /// }
+  /// ```
+  ///
+  /// A refusal is not an error: it returns
+  /// [AgeSignalsAccessStatus.notShared]. In regions with mandatory
+  /// verification laws Play skips the prompt entirely: already-verified and
+  /// supervised users come back [AgeSignalsAccessStatus.shared], while
+  /// unverified users come back
+  /// [AgeSignalsAccessStatus.verificationRequired] and complete
+  /// verification in the Play Store app before signals become available.
+  ///
+  /// On iOS this returns [AgeSignalsAccessStatus.shared] without showing
+  /// anything, because Apple gathers consent inside [checkAgeSignals]
+  /// itself and a refusal surfaces there as [AgeSignalsStatus.declined].
+  /// Returning shared keeps a single call sequence working on both
+  /// platforms. It is not unconditional, though: iOS throws rather than
+  /// reporting access it could not honour, so this call also acts as a
+  /// pre-flight there.
+  ///
+  /// Throws [AgeSignalsException] subclasses on API errors:
+  ///
+  /// * [ApiErrorException] with code `PRESENTATION_CONTEXT_UNAVAILABLE`
+  ///   when no activity is available to present the prompt on (Android).
+  /// * [UnsupportedPlatformException] on iOS below 26.0, where
+  ///   [checkAgeSignals] could not succeed anyway.
+  /// * [NotInitializedException] on iOS when [initialize] has not supplied
+  ///   age gates. Android has no such guard, so call [initialize] first on
+  ///   both platforms.
+  Future<AgeSignalsAccessStatus> requestAgeSignalsAccess() {
+    return AgeRangeSignalsPlatform.instance.requestAgeSignalsAccess();
+  }
+
   /// Checks the age signals for the current user.
   ///
   /// Returns an [AgeSignalsResult] containing the verification status and
   /// any available age information.
+  ///
+  /// On Android, call [requestAgeSignalsAccess] first; without shared
+  /// access the Play Age Signals API returns no signals and the status is
+  /// [AgeSignalsStatus.unknown].
   ///
   /// On iOS, you must call [initialize] with age gates before calling this method.
   ///
