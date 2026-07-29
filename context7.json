@@ -48,7 +48,7 @@
     "`SignificantChangeStatus` (Android, supervised users) is approved, pending or declined. Pending or declined reports supervisedApprovalPending/Denied whatever the age, because an outstanding guardian decision is actionable either way.",
     "`ageLower`/`ageUpper` are null when nothing was shared. A `verified` result always has `ageLower` set. `ageUpper` is null only for Play's open-ended 18+ band, so never use it as a proxy for adult.",
     "Android is ActivityAware because Play hosts a sharing prompt. Without an attached Activity, `requestAgeSignalsAccess()` throws `ApiErrorException` with code `PRESENTATION_CONTEXT_UNAVAILABLE`.",
-    "`useMockData: true` throws `MockDataNotAllowedException` outside debuggable Android builds. Use a debuggable variant when you need mock data.",
+    "`useMockData` throws `MockDataNotAllowedException` when enabled outside debuggable Android builds. Use a debuggable variant when you need mock data.",
     "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real device on iOS 26.2+.",
     "Catch `AgeSignalsException` as the base type for all plugin errors. Each carries a `code` and a `details` string holding platform-specific diagnostics.",
     "Exception subclasses, all suffixed `Exception`: ApiNotAvailable, UnsupportedPlatform, NotInitialized, MissingEntitlement, ApiError, PlayServices, NetworkError, UserNotSignedIn, UserCancelled, MockDataNotAllowed.",
