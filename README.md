@@ -90,6 +90,8 @@ The plugin returns one age signal; how far you build on it depends on your app, 
 
 These laws are in flux. The plugin handles missing data gracefully, so the advice is the same throughout: keep it integrated and rely on the runtime signal rather than hard-coding which regions are live. Dates are current as of this release.
 
+> **Google Play's rollout is wider than the laws.** Google has [announced](https://android-developers.googleblog.com/2026/07/google-play-age-signals-api-safer-experiences.html) Play Age Signals reaching Australia and Canada by mid-August 2026, and a full global rollout later in 2026. The API can therefore return signals for users in places with no age-verification statute at all, which is one more reason to read the runtime signal rather than this list.
+
 - **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026. Google requires a recent Play Age Signals library for Brazil, which this plugin bundles; no action needed on your side. On the Apple side, from February 24, 2026 the App Store blocks Brazilian users from downloading 18+ apps unless confirmed adult, and apps declaring loot boxes are automatically rated 18+ on the Brazil storefront. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) · [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Australia:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Australia from downloading 18+ apps unless confirmed adult. Separate from the [Social Media Minimum Age Act](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions) (in effect December 10, 2025), and from App Store content *ratings*, which this plugin does not handle. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Singapore:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Singapore from downloading 18+ apps unless confirmed adult. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
@@ -520,7 +522,7 @@ Result object containing age verification information.
 - `int? ageLower` - Lower bound of age range (both platforms; iOS: when user consents, Android: whenever signals are shared - verified 18+ reports `ageLower=18`)
 - `int? ageUpper` - Upper bound of age range (both platforms; iOS: when user consents, Android: whenever signals are shared; `null` for the open-ended 18+ band)
 - `AgeDeclarationSource? source` - Source of age declaration (iOS only)
-- `String? installId` - Installation identifier (Android only, supervised users). When a parent revokes approval, Google lists the id on the Play Console's Revoked app approvals tab as a CSV download retained for 90 days; store it on your backend and ingest revocations within that window if you need to act on them - Google permits no other use
+- `String? installId` - Installation identifier (Android only, supervised users). When a parent revokes approval, Google lists the id on the Play Console's Revoked app approvals tab as a CSV download retained for 90 days; store it on your backend and ingest revocations within that window if you need to act on them - Google permits no other use. Google's docs still mark that Console tab as not yet live, so store the id now and expect nothing to ingest until it ships
 - `List<String>? activeParentalControls` - Parental controls active on the user's account, as raw Apple identifiers such as `communicationLimits` (iOS only)
 - `AgeRangeSource? ageRangeSource` - How Google Play established the age range (Android only). `status` is **not** derived from this tier: the verdict comes from the age band measured against your highest gate. Use this to apply a minimum assurance policy
 - `SignificantChangeStatus? significantChangeStatus` - Parent approval state for significant app changes (Android only, supervised users)
@@ -794,7 +796,7 @@ await AgeRangeSignals.instance.initialize(
 - Easier automated testing and manual QA
 - Default behavior (supervised 13-15) maintained for backward compatibility
 
-**Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`). Verified mocks default to the open-ended adult band (`ageLower: 18, ageUpper: null`), because the verdict is derived from the band - a real verified response reports the open-ended 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it. See [AgeSignalsResult](#agesignalsresult) for the full rules.
+**Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`). Verified mocks default to the open-ended adult band, with `ageLower` at your highest age gate (18 until you supply gates) and `ageUpper: null`, because the verdict is derived from the band. A real verified response reports Play's open-ended 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it exactly. See [AgeSignalsResult](#agesignalsresult) for the full rules.
 
 ### iOS Testing
 
