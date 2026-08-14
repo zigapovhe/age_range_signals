@@ -20,6 +20,7 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
 - [Usage](#usage)
     - [Basic Example](#basic-example)
     - [Handling Every Status and Error](#handling-every-status-and-error)
+    - [Handling verificationRequired (Android)](#handling-verificationrequired-android)
     - [Complete Example](#complete-example)
     - [Regulatory Features (iOS 26.4+)](#regulatory-features-ios-264)
     - [18+ Only App](#18-only-app)
@@ -197,6 +198,8 @@ try {
 }
 ```
 
+> **Which call shows UI.** The word "prompt" means something different on each platform, so to be explicit: on **Android**, `requestAgeSignalsAccess()` shows Play's age sharing sheet and `checkAgeSignals()` shows nothing (it takes no `Activity`, so it has nowhere to draw). On **iOS** it is reversed: `requestAgeSignalsAccess()` shows nothing and Apple gathers consent inside `checkAgeSignals()`, where a refusal arrives as `AgeSignalsStatus.declined`. Where this README says *you* should prompt, such as `showAgeVerificationPrompt()` in the examples below, that means your own UI rather than a system sheet.
+
 That covers the common path. Production apps should handle every status and
 the specific exception types, shown next.
 
@@ -237,6 +240,8 @@ try {
     case AgeSignalsStatus.supervisedApprovalDenied:
       print('Guardian denied access');
       break;
+    // Still a member of the enum, so an exhaustive switch has to name it,
+    // but neither platform returns it any more. Read ageRangeSource instead.
     // ignore: deprecated_member_use
     case AgeSignalsStatus.declared:
       print('User declared their age through Google Play');
@@ -290,6 +295,56 @@ try {
 } on AgeSignalsException catch (e) {
   // Catch-all for any other errors
   print('Error: ${e.message}');
+}
+```
+
+### Handling verificationRequired (Android)
+
+`verificationRequired` has no in-app resolution. The user completes verification
+in the Play Store app, so all your app can do is explain that and send them
+there. Google does not document a deep link to the verification flow; their
+guidance is that users "will be asked to verify or set up supervision when they
+visit the Play Store app", so opening the store is enough.
+
+There is no callback when they return, so re-check on resume. Otherwise a user
+verifies, comes back, and your app still treats them as unverified.
+
+```dart
+class _AgeGateState extends State<AgeGate> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The user may have verified while your app was backgrounded.
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+
+    if (access == AgeSignalsAccessStatus.verificationRequired) {
+      // Your own UI, not a system sheet: explain what is needed and offer
+      // a button that opens the Play Store (for example via url_launcher).
+      showVerifyInPlayStoreMessage();
+      return;
+    }
+
+    if (access != AgeSignalsAccessStatus.shared) return;
+
+    final result = await AgeRangeSignals.instance.checkAgeSignals();
+    applyAgeGate(result);
+  }
 }
 ```
 
