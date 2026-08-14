@@ -7,6 +7,27 @@
 
 A Flutter plugin for age verification that supports Google Play Age Signals API (Android) and Apple's DeclaredAgeRange API (iOS 26+).
 
+## Quickstart
+
+```dart
+import 'package:age_range_signals/age_range_signals.dart';
+
+await AgeRangeSignals.instance.initialize(ageGates: [18]);
+
+final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+if (access == AgeSignalsAccessStatus.shared) {
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+  if (result.status == AgeSignalsStatus.verified) {
+    showAdultContent();
+  }
+}
+```
+
+That is the whole API. `status` is the age verdict measured against your highest
+gate, not a claim about identity or supervision. See [Basic Example](#basic-example)
+for error handling and [Handling Every Status and Error](#handling-every-status-and-error)
+for the exhaustive version.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -21,7 +42,6 @@ A Flutter plugin for age verification that supports Google Play Age Signals API 
     - [Basic Example](#basic-example)
     - [Handling Every Status and Error](#handling-every-status-and-error)
     - [Handling verificationRequired (Android)](#handling-verificationrequired-android)
-    - [Complete Example](#complete-example)
     - [Regulatory Features (iOS 26.4+)](#regulatory-features-ios-264)
     - [18+ Only App](#18-only-app)
     - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
@@ -344,46 +364,6 @@ class _AgeGateState extends State<AgeGate> with WidgetsBindingObserver {
 
     final result = await AgeRangeSignals.instance.checkAgeSignals();
     applyAgeGate(result);
-  }
-}
-```
-
-### Complete Example
-
-```dart
-import 'dart:io';
-import 'package:age_range_signals/age_range_signals.dart';
-
-Future<void> checkUserAge() async {
-  // Call on both platforms: iOS requires the gates, and Android uses your
-  // highest gate as the bar for `verified`.
-  await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
-
-  // Check age signals
-  try {
-    final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
-    if (access != AgeSignalsAccessStatus.shared) {
-      // No signals available; decide your fallback (e.g. restrict or prompt).
-      showAgeVerificationPrompt();
-      return;
-    }
-
-    final result = await AgeRangeSignals.instance.checkAgeSignals();
-
-    if (result.status == AgeSignalsStatus.verified) {
-      // User is verified, proceed with age-appropriate content
-      showMainContent();
-    } else if (result.status == AgeSignalsStatus.supervised ||
-               result.status == AgeSignalsStatus.declared) {
-      // User is under supervision or declared their age, check age range
-      showRestrictedContent();
-    } else {
-      // Age unknown or declined, handle accordingly
-      showAgeVerificationPrompt();
-    }
-  } on AgeSignalsException catch (e) {
-    // Handle errors appropriately
-    print('Age verification error: ${e.message}');
   }
 }
 ```
@@ -772,84 +752,31 @@ print(result.installId); // "test_install_id_12345"
 
 #### Testing Different Scenarios
 
-You can now test different scenarios without modifying the plugin source code by using the `mockData` parameter:
+Pass `mockData` to cover any scenario from Dart, without touching Kotlin:
 
 ```dart
-// Test supervised user aged 16-17
 await AgeRangeSignals.instance.initialize(
   useMockData: true,
-  mockData: AgeSignalsMockData(
+  mockData: const AgeSignalsMockData(
     status: AgeSignalsStatus.supervised,
     ageLower: 16,
     ageUpper: 17,
     installId: 'test_install_id',
   ),
 );
-
-// Test verified user (18+) - defaults to the open-ended 18+ band
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: const AgeSignalsMockData(
-    status: AgeSignalsStatus.verified,
-    // Omitting the band gives the open-ended adult band (ageLower: 18)
-  ),
-);
-
-// Test supervisedApprovalPending status
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: AgeSignalsMockData(
-    status: AgeSignalsStatus.supervisedApprovalPending,
-    ageLower: 13,
-    ageUpper: 15,
-    installId: 'test_install_id',
-  ),
-);
-
-// Test supervisedApprovalDenied status
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: AgeSignalsMockData(
-    status: AgeSignalsStatus.supervisedApprovalDenied,
-    ageLower: 13,
-    ageUpper: 15,
-    installId: 'test_install_id',
-  ),
-);
-
-// Test unknown status
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: const AgeSignalsMockData(
-    status: AgeSignalsStatus.unknown,
-  ),
-);
-
-// Test the access request being declined (requestAgeSignalsAccess()
-// returns notShared; checkAgeSignals() then reports unknown)
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: const AgeSignalsMockData(
-    status: AgeSignalsStatus.unknown,
-    accessStatus: AgeSignalsAccessStatus.notShared,
-  ),
-);
-
-// Test a strongly verified user (explicit tier override)
-await AgeRangeSignals.instance.initialize(
-  useMockData: true,
-  mockData: const AgeSignalsMockData(
-    status: AgeSignalsStatus.verified,
-    ageRangeSource: AgeRangeSource.tierD,
-  ),
-);
 ```
 
-**Benefits:**
-- Uses Google's official `FakeAgeSignalsManager` for authentic testing
-- Test all scenarios from Dart code - no need to modify Kotlin source files
-- Easier automated testing and manual QA
-- Default behavior (supervised 13-15) maintained for backward compatibility
+Swap the `mockData` argument for any of these:
+
+| Scenario | `mockData` | What you get back |
+|---|---|---|
+| Supervised teen | `status: supervised, ageLower: 16, ageUpper: 17, installId: 'test_id'` | `supervised`, `tierB`, your install id |
+| Verified adult | `status: verified` | `verified`, band open-ended from your highest gate |
+| Strongly verified adult | `status: verified, ageRangeSource: AgeRangeSource.tierD` | `verified` pinned to `tierD` |
+| Awaiting parent approval | `status: supervisedApprovalPending, ageLower: 13, ageUpper: 15` | `supervisedApprovalPending`, change status `pending` |
+| Parent denied the change | `status: supervisedApprovalDenied, ageLower: 13, ageUpper: 15` | `supervisedApprovalDenied`, change status `declined` |
+| No signals at all | `status: unknown` | `unknown`, no band, no tier |
+| Sharing declined | `status: unknown, accessStatus: AgeSignalsAccessStatus.notShared` | `requestAgeSignalsAccess()` returns `notShared`; `checkAgeSignals()` reports `unknown` |
 
 **Note**: Mock values follow the same predefined age bands as real responses (`0-12`, `13-15`, `16-17`, `18+`). Verified mocks default to the open-ended adult band, with `ageLower` at your highest age gate (18 until you supply gates) and `ageUpper: null`, because the verdict is derived from the band. A real verified response reports Play's open-ended 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it exactly. See [AgeSignalsResult](#agesignalsresult) for the full rules.
 
