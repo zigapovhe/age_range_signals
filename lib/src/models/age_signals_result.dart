@@ -57,9 +57,7 @@ class AgeSignalsResult {
   /// lists the id on the Play Console's Revoked app approvals tab as a CSV
   /// download, retained for 90 days - so store it on your backend and
   /// ingest revocations within that window if you need to act on them.
-  /// Google permits no other use. Google's docs still mark that Console tab
-  /// as not yet live, so store the id now and expect nothing to ingest until
-  /// it ships. Only available on Android.
+  /// Google permits no other use. Only available on Android.
   final String? installId;
 
   /// Parental controls active on the user's account (iOS only).
