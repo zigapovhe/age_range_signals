@@ -200,6 +200,17 @@ void main() {
       expect(result.installId, 'test-install-id');
     });
 
+    test('parses a confirmed declaration source', () {
+      final result = AgeSignalsResult.fromMap({
+        'status': 'verified',
+        'ageLower': 18,
+        'source': 'confirmed',
+      });
+
+      expect(result.source, AgeDeclarationSource.confirmed);
+      expect(result.toMap()['source'], 'confirmed');
+    });
+
     test('creates from map with supervisedApprovalPending status', () {
       final map = {
         'status': 'supervisedApprovalPending',

@@ -164,15 +164,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     result(self.ageRangeResultMap(status: "declined"))
 
                 case .sharing(let range):
-                    let source: String?
-                    switch range.ageRangeDeclaration {
-                    case .selfDeclared:
-                        source = "selfDeclared"
-                    case .guardianDeclared:
-                        source = "guardianDeclared"
-                    default:
-                        source = nil
-                    }
+                    let source = self.declarationName(range.ageRangeDeclaration)
 
                     // Determine status based on highest configured age gate.
                     // A shared range with no lower bound carries no verdict, so
@@ -299,6 +291,47 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     }
 
     #if canImport(DeclaredAgeRange)
+    /// Translates Apple's declaration source into a stable channel name.
+    /// Values this plugin version does not know map to nil.
+    @available(iOS 26.0, *)
+    private func declarationName(
+        _ declaration: AgeRangeService.AgeRangeDeclaration?
+    ) -> String? {
+        guard let declaration else { return nil }
+        switch declaration {
+        case .selfDeclared:
+            return "selfDeclared"
+        case .guardianDeclared:
+            return "guardianDeclared"
+        default:
+            break
+        }
+        // `confirmed` arrived in the iOS 26.5 SDK, whose Xcode ships Swift
+        // 6.3.2; earlier SDKs lack the symbol.
+        #if compiler(>=6.3.2)
+        if #available(iOS 26.5, *), declaration == .confirmed {
+            return "confirmed"
+        }
+        #endif
+        // iOS 26.2 introduced one case per confirmation method and 26.5
+        // deprecated them all in favour of `confirmed`, so they collapse to
+        // the same channel value. Same SDK guard as the parental control
+        // flag below.
+        #if compiler(>=6.2.3)
+        if #available(iOS 26.2, *) {
+            switch declaration {
+            case .paymentChecked, .governmentIDChecked, .checkedByOtherMethod,
+                 .guardianPaymentChecked, .guardianGovernmentIDChecked,
+                 .guardianCheckedByOtherMethod:
+                return "confirmed"
+            default:
+                break
+            }
+        }
+        #endif
+        return nil
+    }
+
     /// Translates Apple's ParentalControls option set into stable string
     /// identifiers for the channel. Flags this plugin version does not know
     /// are omitted; an OptionSet has no stable name for unknown bits, so

@@ -653,6 +653,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
         return 'Self Declared';
       case AgeDeclarationSource.guardianDeclared:
         return 'Guardian Declared';
+      case AgeDeclarationSource.confirmed:
+        return 'Confirmed (payment card, ID or similar)';
     }
   }
 

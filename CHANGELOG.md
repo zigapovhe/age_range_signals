@@ -1,3 +1,9 @@
+## 0.9.0
+
+* **iOS**: `AgeDeclarationSource` gained `confirmed`, for ages Apple confirmed via payment card, government ID or similar (iOS 26.2+). These used to report `source: null`. 26.2-26.4 report each confirmation method separately; 26.5 folds them into `confirmed`, and so does the plugin.
+* **Breaking**: an exhaustive `switch` on `AgeDeclarationSource` needs a `confirmed` case, and `source == null` no longer means a confirmed adult on iOS. The 18+ example now checks for `confirmed` instead of excluding `selfDeclared`.
+* **Docs**: Added a quickstart and clarified which call shows Play's sharing sheet. Fixed dartdoc references that never resolved. Updated the iOS sandbox table to Apple's current scenarios, and noted Apple deprecated `significantAppChangeApprovalRequired` in iOS 26.4. Dropped the "not yet live" note on the Play Console's revoked-approvals tab now that Google removed it.
+
 ## 0.8.0
 
 * **Android**: Migrated to `com.google.android.play:age-signals` 0.0.4, which removes `userStatus` in favour of `ageRangeSource` and `significantChangeStatus`.

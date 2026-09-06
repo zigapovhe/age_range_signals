@@ -113,7 +113,7 @@ These laws are in flux. The plugin handles missing data gracefully, so the advic
 
 > **Google Play's rollout is wider than the laws.** Google has [announced](https://android-developers.googleblog.com/2026/07/google-play-age-signals-api-safer-experiences.html) Play Age Signals reaching Australia and Canada by mid-August 2026, and a full global rollout later in 2026. The API can therefore return signals for users in places with no age-verification statute at all, which is one more reason to read the runtime signal rather than this list.
 
-- **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026. Google requires a recent Play Age Signals library for Brazil, which this plugin bundles; no action needed on your side. On the Apple side, from February 24, 2026 the App Store blocks Brazilian users from downloading 18+ apps unless confirmed adult, and apps declaring loot boxes are automatically rated 18+ on the Brazil storefront. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) · [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
+- **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026, when Play started returning age signals for Brazilian users. On the Apple side, from February 24, 2026 the App Store blocks Brazilian users from downloading 18+ apps unless confirmed adult, and apps declaring loot boxes are automatically rated 18+ on the Brazil storefront. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) · [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Australia:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Australia from downloading 18+ apps unless confirmed adult. Separate from the [Social Media Minimum Age Act](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions) (in effect December 10, 2025), and from App Store content *ratings*, which this plugin does not handle. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Singapore:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Singapore from downloading 18+ apps unless confirmed adult. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Texas (SB 2420):** In effect since June 4, 2026. The Fifth Circuit [stayed](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) the December 2025 injunction pending appeal, and in July 2026 the Supreme Court [declined to intervene](https://www.scotusblog.com/2026/07/supreme-court-allows-texas-to-enforce-law-requiring-age-verification-and-parental-consent-on-app/), so the APIs return live data for Texas users. The merits appeal is still pending. See [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
@@ -429,11 +429,11 @@ final result = await AgeRangeSignals.instance.checkAgeSignals();
 // including a self-declaration, so a strictly 18+ app should decide what
 // assurance it will accept rather than leaving it implicit.
 // Apply an assurance floor on both platforms. Android exposes the Play tier;
-// iOS exposes the declaration type, where a bare self-declaration is the
-// weakest signal Apple reports.
+// iOS exposes the declaration type, where `confirmed` means Apple checked a
+// payment card, ID or similar (iOS 26.2+; older releases report null).
 const acceptableTiers = {AgeRangeSource.tierC, AgeRangeSource.tierD};
 final assuranceOk = Platform.isIOS
-    ? result.source != AgeDeclarationSource.selfDeclared
+    ? result.source == AgeDeclarationSource.confirmed
     : acceptableTiers.contains(result.ageRangeSource);
 
 if (result.status == AgeSignalsStatus.verified && assuranceOk) {
@@ -601,7 +601,7 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 **‡ `ageUpper` may be `null`** for an open-ended top bucket (e.g., an 18+ range returns `ageLower=18, ageUpper=null`), mirroring the Android edge case above.
 
-**§ `source` may be `null`** when the declaration type is neither self-declared nor guardian-declared (e.g., Apple's `paymentChecked` / `guardianPaymentChecked`, or an unrecognized/future type), even for `verified`/`supervised`.
+**§ `source` may be `null`** for an unrecognized/future declaration type, even for `verified`/`supervised`. Apple's confirmation methods (payment card, government ID, etc.) map to `confirmed` rather than `null`; see [AgeDeclarationSource](#agedeclarationsource).
 
 **Note:** iOS no longer returns `unknown` from an eligibility pre-check (as of 0.6.0); that check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)). It can still return `unknown` for a shared range that carries no lower bound, since that shape yields no verdict. Android reports `unknown` for the same shape.
 
@@ -649,6 +649,7 @@ Enum representing the source of age declaration (iOS only):
 
 - `selfDeclared` - Age was self-declared by the user
 - `guardianDeclared` - Age was declared by a guardian
+- `confirmed` - Age was confirmed through a scrutinized method such as a payment card or government ID, by the user or a guardian (iOS 26.2+). iOS 26.2 to 26.4 report each method as its own value and iOS 26.5 folds them into `confirmed`; the plugin reports `confirmed` for all of them
 
 ### AgeRegulatoryFeature
 
@@ -789,7 +790,7 @@ The `useMockData` and `mockData` parameters are **ignored on iOS**: Apple provid
 **Requirements:**
 - A real **iOS 26.2+ device** (no simulator support)
 - The `com.apple.developer.declared-age-range` capability **registered on your App ID** (see iOS Setup; a hand-edited entitlements key alone gets stripped at signing)
-- A **Sandbox Apple Account** signed in **only** under Settings → Developer → Sandbox Apple Account (not the normal iCloud sign-in, or eligibility misbehaves), with its **App Store territory** set to an applicable region (US, Brazil, Australia, Singapore)
+- A **Sandbox Apple Account** signed in **only** under Settings → Developer → Sandbox Apple Account (not the normal iCloud sign-in, or eligibility misbehaves), with its **App Store territory** set to a region where Apple's age assurance applies (see [Regulatory Status](#regulatory-status))
 
 **Testing with sandbox Age Assurance scenarios:**
 1. On the device: **Settings → Developer → Sandbox Apple Account → Manage → Age Assurance**
@@ -799,13 +800,15 @@ With age gates `[13, 16, 18]`, Apple's scenarios map through the plugin as follo
 
 | Sandbox scenario | `status` | ageLower | ageUpper | source |
 |---|---|---|---|---|
-| Under 13, approved | `supervised` | 0 | 12 | `null` |
-| Ages 13-15, approved | `supervised` | 13 | 15 | `null` |
-| Ages 16-17, declined | `supervised` | 16 | 17 | `null` |
-| 18+, account verified | `verified` | 18 | `null` | `null` |
-| 18+, self declared | `verified` | 18 | `null` | `selfDeclared` |
+| Under 13, significant change approved | `supervised` | 0 | 12 | `guardianDeclared` |
+| 13 - 15, significant change approved | `supervised` | 13 | 15 | `guardianDeclared` |
+| 16 - 17, significant change declined | `supervised` | 16 | 17 | `guardianDeclared` |
+| 18+, age not confirmed | `verified` | 18 | `null` | `selfDeclared` |
+| 18+, age confirmed (either variant) | `verified` | 18 | `null` | `confirmed` |
 
-> **The two "declines" are different.** A `declined` *status* means the user refused to share their age (DeclaredAgeRange `.declinedSharing`). The "Ages 16-17, **declined**" sandbox scenario is not that. It still returns the 16-17 range via DeclaredAgeRange, so the plugin reports `supervised`. The "declined" there is a **PermissionKit** guardian-permission response, a separate Apple framework this plugin does not wrap. DeclaredAgeRange has no "denied" state, so a guardian decline or consent revocation surfaces as the user's real age range (`supervised`), not a distinct denied status. If you need the guardian approve/deny signal itself, use PermissionKit plus App Store Server Notifications.
+The `source` column is what Apple documents for each scenario; the same Manage screen also offers **Revoke App Consent**, which only exercises App Store Server Notifications and changes nothing this plugin returns.
+
+> **The two "declines" are different.** A `declined` *status* means the user refused to share their age (DeclaredAgeRange `.declinedSharing`). The "16 - 17, significant change **declined**" sandbox scenario is not that. It still returns the 16-17 range via DeclaredAgeRange, so the plugin reports `supervised`. The "declined" there is a **PermissionKit** guardian-permission response, a separate Apple framework this plugin does not wrap. DeclaredAgeRange has no "denied" state, so a guardian decline or consent revocation surfaces as the user's real age range (`supervised`), not a distinct denied status. If you need the guardian approve/deny signal itself, use PermissionKit plus App Store Server Notifications.
 
 > Reference: Apple's [Testing age assurance in sandbox](https://developer.apple.com/documentation/storekit/testing-age-assurance-in-sandbox).
 

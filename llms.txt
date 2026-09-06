@@ -33,7 +33,7 @@ Constraints that are easy to get wrong:
 
 Errors all extend `AgeSignalsException`, which carries `code` and a `details` string of platform diagnostics. Subclasses: `ApiNotAvailableException`, `UnsupportedPlatformException`, `NotInitializedException`, `MissingEntitlementException`, `ApiErrorException`, `PlayServicesException`, `NetworkErrorException`, `UserNotSignedInException`, `UserCancelledException`, `MockDataNotAllowedException`.
 
-`AgeSignalsResult` fields: `status`, `ageLower`, `ageUpper`, `ageRangeSource` (Android), `significantChangeStatus` (Android), `significantChangeApprovalDate` (Android; named `mostRecentApprovalDate` before 0.8.0, still available as a deprecated alias), `installId` (Android), `source` (iOS declaration type), `activeParentalControls` (iOS).
+`AgeSignalsResult` fields: `status`, `ageLower`, `ageUpper`, `ageRangeSource` (Android), `significantChangeStatus` (Android), `significantChangeApprovalDate` (Android; named `mostRecentApprovalDate` before 0.8.0, still available as a deprecated alias), `installId` (Android), `source` (iOS declaration type), `activeParentalControls` (iOS). `source` is `AgeDeclarationSource`: `selfDeclared`, `guardianDeclared`, or `confirmed` (iOS 26.2+, added in 0.9.0, reported when Apple confirmed the age via payment or ID; an exhaustive `switch` on the enum needs this case).
 
 ## Docs
 

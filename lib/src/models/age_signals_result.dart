@@ -64,7 +64,9 @@ class AgeSignalsResult {
   ///
   /// Stable identifiers as reported by Apple's DeclaredAgeRange framework:
   /// `communicationLimits` (iOS 26.0+) and
-  /// `significantAppChangeApprovalRequired` (iOS 26.2+). Controls this
+  /// `significantAppChangeApprovalRequired` (iOS 26.2+, deprecated by Apple
+  /// in 26.4 in favour of [AgeRegulatoryFeature.significantAppChangeRequiresParentalConsent]
+  /// from [AgeRangeSignals.getRequiredRegulatoryFeatures]). Controls this
   /// plugin version does not recognize are omitted. Null on Android and
   /// when Apple reports none.
   final List<String>? activeParentalControls;
@@ -181,16 +183,10 @@ class AgeSignalsResult {
 
   /// Creates an [AgeSignalsResult] from a map.
   factory AgeSignalsResult.fromMap(Map<String, dynamic> map) {
-    AgeDeclarationSource? source;
     final sourceValue = map['source'];
-    if (sourceValue is String) {
-      for (final candidate in AgeDeclarationSource.values) {
-        if (candidate.name == sourceValue) {
-          source = candidate;
-          break;
-        }
-      }
-    }
+    final source = sourceValue is String
+        ? AgeDeclarationSource.fromName(sourceValue)
+        : null;
 
     final controls = (map['activeParentalControls'] as List?)
         ?.map((e) => e as String)
@@ -329,6 +325,22 @@ enum AgeDeclarationSource {
 
   /// Age was declared by a guardian in Family Sharing.
   guardianDeclared,
+
+  /// Age was confirmed through a scrutinized method such as a payment card
+  /// or government ID, by the user or by a guardian (iOS 26.2+).
+  ///
+  /// iOS 26.2 to 26.4 report the individual methods (`paymentChecked`,
+  /// `governmentIDChecked`, their guardian variants and so on) and iOS 26.5
+  /// folds them into a single `confirmed` case. The plugin reports
+  /// `confirmed` for all of them.
+  confirmed;
+
+  /// Parses a source name coming over the platform channel.
+  ///
+  /// Returns null for names this version does not know, so future Apple
+  /// additions degrade gracefully instead of crashing the parse.
+  static AgeDeclarationSource? fromName(String name) =>
+      AgeDeclarationSource.values.asNameMap()[name];
 }
 
 /// How Google Play established the user's age range (Android only).
