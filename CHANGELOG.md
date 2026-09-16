@@ -1,3 +1,7 @@
+## Unreleased
+
+* **iOS**: Added `isEligibleForAgeFeatures()` (iOS 26.2+), an opt-in wrapper for Apple's region check and the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features). Apple DTS [confirms](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022) that `requiredRegulatoryFeatures` can be empty while this is `true`, so apps that pre-gate on region need both. `checkAgeSignals()` still does not call it internally. Same 10-second deadline as the regulatory call. Throws `UnsupportedPlatformException` below iOS 26.2, on pre-26.2 SDKs and on Android, so `false` always means Apple reports no obligation.
+
 ## 0.9.0
 
 * **iOS**: `AgeDeclarationSource` gained `confirmed`, for ages Apple confirmed via payment card, government ID or similar (iOS 26.2+). These used to report `source: null`. 26.2-26.4 report each confirmation method separately; 26.5 folds them into `confirmed`, and so does the plugin.

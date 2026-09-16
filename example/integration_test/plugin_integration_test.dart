@@ -63,6 +63,34 @@ void main() {
     }
   });
 
+  testWidgets('isEligibleForAgeFeatures returns within its deadline', (
+    WidgetTester tester,
+  ) async {
+    // The native side races the Apple call against a 10 second deadline, so
+    // this must never hang.
+    final call = AgeRangeSignals.instance.isEligibleForAgeFeatures().timeout(
+      const Duration(seconds: 20),
+    );
+
+    if (Platform.isAndroid) {
+      // Android has no equivalent and must say so rather than answer false.
+      await expectLater(call, throwsA(isA<UnsupportedPlatformException>()));
+      return;
+    }
+
+    try {
+      final eligible = await call;
+      // ignore: avoid_print
+      print('eligible for age features: $eligible');
+    } on AgeSignalsException catch (e) {
+      // Acceptable on iOS: UnsupportedPlatformException below 26.2, or the
+      // API rejecting the caller (entitlement, no Apple Account on a
+      // simulator). The typed exception proves the native handler ran.
+      // ignore: avoid_print
+      print('eligible for age features threw: ${e.runtimeType}: $e');
+    }
+  });
+
   testWidgets('getRequiredRegulatoryFeatures returns within its deadline', (
     WidgetTester tester,
   ) async {

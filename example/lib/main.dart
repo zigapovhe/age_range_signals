@@ -36,6 +36,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   final bool _isIos = Platform.isIOS;
   String _currentScenario = 'Default (Supervised 13-15)';
   String? _accessOutcome;
+  String? _eligibilityOutcome;
   String? _regulatoryOutcome;
   String? _acknowledgmentOutcome;
 
@@ -153,6 +154,30 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       setState(() {
         _error = 'Unexpected error: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkEligibility() async {
+    setState(() {
+      _eligibilityOutcome = 'Checking...';
+    });
+    final stopwatch = Stopwatch()..start();
+    try {
+      final eligible = await AgeRangeSignals.instance
+          .isEligibleForAgeFeatures();
+      stopwatch.stop();
+      setState(() {
+        _eligibilityOutcome =
+            '$eligible (Apple ${eligible ? 'requires' : 'does not require'} '
+            'age assurance) in ${stopwatch.elapsedMilliseconds} ms';
+      });
+    } on AgeSignalsException catch (e) {
+      stopwatch.stop();
+      setState(() {
+        _eligibilityOutcome =
+            '${e.runtimeType}: ${e.message} '
+            '(${stopwatch.elapsedMilliseconds} ms)';
       });
     }
   }
@@ -446,11 +471,24 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Regulatory Features (iOS 26.4+)',
+              'Eligibility & Regulatory Features (iOS 26.2+ / 26.4+)',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _checkEligibility,
+              icon: const Icon(Icons.public_outlined),
+              label: const Text('Is Eligible For Age Features'),
+            ),
+            if (_eligibilityOutcome != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _eligibilityOutcome!,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _getRegulatoryFeatures,

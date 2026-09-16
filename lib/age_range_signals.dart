@@ -176,6 +176,46 @@ class AgeRangeSignals {
     return AgeRangeSignalsPlatform.instance.checkAgeSignals();
   }
 
+  /// Reports whether Apple considers the current user subject to age
+  /// assurance, based on their region and account settings (iOS 26.2+).
+  ///
+  /// This is the first step in Apple's
+  /// [documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features).
+  /// [checkAgeSignals] never calls it for you; use it to keep the age range
+  /// sheet away from users in regions with no obligation:
+  ///
+  /// ```dart
+  /// bool obligated;
+  /// try {
+  ///   obligated = await AgeRangeSignals.instance.isEligibleForAgeFeatures();
+  /// } on UnsupportedPlatformException {
+  ///   obligated = yourOwnRegionalFallback();
+  /// }
+  /// if (obligated) {
+  ///   final result = await AgeRangeSignals.instance.checkAgeSignals();
+  /// }
+  /// ```
+  ///
+  /// [getRequiredRegulatoryFeatures] does not replace it: Apple DTS
+  /// [states](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022)
+  /// the feature set can be empty while this returns `true`, and the
+  /// obligation still stands.
+  ///
+  /// Guarded by a 10-second deadline; a timeout surfaces as
+  /// [ApiErrorException]. Apple caches the value, so a sandbox scenario
+  /// change only shows up after a relaunch.
+  ///
+  /// Throws [UnsupportedPlatformException] on Android, on iOS below 26.2
+  /// and in apps built with an SDK older than iOS 26.2 (Xcode < 26.2), so
+  /// `false` always means Apple reports no obligation. Play limits itself to
+  /// covered regions on its own, so on Android call [requestAgeSignalsAccess]
+  /// directly. Throws [ApiNotAvailableException] when Apple reports the
+  /// service unavailable and other [AgeSignalsException] subclasses on API
+  /// errors.
+  Future<bool> isEligibleForAgeFeatures() {
+    return AgeRangeSignalsPlatform.instance.isEligibleForAgeFeatures();
+  }
+
   /// Returns the regulatory features Apple reports as required for the
   /// current user, based on their region and account settings (iOS 26.4+).
   ///

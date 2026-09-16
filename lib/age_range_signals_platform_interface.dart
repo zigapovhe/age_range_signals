@@ -89,6 +89,17 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
     throw UnimplementedError('checkAgeSignals() has not been implemented.');
   }
 
+  /// Reports whether Apple considers the current user subject to age
+  /// assurance (iOS 26.2+).
+  ///
+  /// Throws [UnsupportedPlatformException] on Android, on iOS below 26.2 and
+  /// in apps built with a pre-26.2 SDK.
+  Future<bool> isEligibleForAgeFeatures() {
+    throw UnimplementedError(
+      'isEligibleForAgeFeatures() has not been implemented.',
+    );
+  }
+
   /// Returns the regulatory features Apple reports as required for the
   /// current user (iOS 26.4+).
   ///

@@ -53,6 +53,7 @@
     "`useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`. They are silently ignored on iOS, which has no testing utility and requires a real device on iOS 26.2+.",
     "Catch `AgeSignalsException` as the base type for all plugin errors. Each carries a `code` and a `details` string holding platform-specific diagnostics.",
     "Exception subclasses, all suffixed `Exception`: ApiNotAvailable, UnsupportedPlatform, NotInitialized, MissingEntitlement, ApiError, PlayServices, NetworkError, UserNotSignedIn, UserCancelled, MockDataNotAllowed.",
+    "`isEligibleForAgeFeatures()` (iOS 26.2+) is Apple's opt-in obligation check; `checkAgeSignals()` never calls it. It throws `UnsupportedPlatformException` on Android, below iOS 26.2 and on pre-26.2 SDKs, so false always means Apple reports no obligation.",
     "`getRequiredRegulatoryFeatures()` needs iOS 26.4+ and an Xcode 26.4+ build. It returns an empty set on Android and throws `UnsupportedPlatformException` on older iOS, so an empty set always means no regulatory action is required, never unknown.",
     "`showSignificantUpdateAcknowledgment()` throws `UnsupportedPlatformException` on Android and iOS below 26.4. Apple reports user dismissal with the same error as real unavailability, so `ApiNotAvailableException` is not proof the sheet never showed.",
     "Platform floors: Android API 23+ with Google Play services; iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features. iOS also requires Apple's DeclaredAgeRange entitlement.",

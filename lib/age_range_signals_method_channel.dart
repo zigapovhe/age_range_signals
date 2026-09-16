@@ -76,6 +76,21 @@ class MethodChannelAgeRangeSignals extends AgeRangeSignalsPlatform {
   }
 
   @override
+  Future<bool> isEligibleForAgeFeatures() async {
+    try {
+      final eligible = await methodChannel.invokeMethod<bool>(
+        'isEligibleForAgeFeatures',
+      );
+      if (eligible == null) {
+        throw const AgeSignalsException('Received null result from platform');
+      }
+      return eligible;
+    } on PlatformException catch (e) {
+      throw _handlePlatformException(e);
+    }
+  }
+
+  @override
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() async {
     try {
       final raw = await methodChannel.invokeListMethod<String>(
