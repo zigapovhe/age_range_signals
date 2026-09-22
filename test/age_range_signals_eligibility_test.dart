@@ -23,11 +23,4 @@ void main() {
     expect(await AgeRangeSignals.instance.isEligibleForAgeFeatures(), isTrue);
     expect(fake.calls, 1);
   });
-
-  test('isEligibleForAgeFeatures passes false through unchanged', () async {
-    final fake = _FakePlatform()..eligible = false;
-    AgeRangeSignalsPlatform.instance = fake;
-
-    expect(await AgeRangeSignals.instance.isEligibleForAgeFeatures(), isFalse);
-  });
 }

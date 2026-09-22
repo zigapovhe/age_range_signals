@@ -207,7 +207,11 @@ class AgeRangeSignals {
   ///
   /// Throws [UnsupportedPlatformException] on Android, on iOS below 26.2
   /// and in apps built with an SDK older than iOS 26.2 (Xcode < 26.2), so
-  /// `false` always means Apple reports no obligation. Play limits itself to
+  /// `false` is always Apple's own answer rather than a fallback. Treat it
+  /// as Apple's current report, not a stable region flag: devices in a
+  /// regulated region have been seen flipping to `false` with no account
+  /// change, so keep a caller-side fallback where a law applies to you
+  /// regardless. Play limits itself to
   /// covered regions on its own, so on Android call [requestAgeSignalsAccess]
   /// directly. Throws [ApiNotAvailableException] when Apple reports the
   /// service unavailable and other [AgeSignalsException] subclasses on API
@@ -219,11 +223,12 @@ class AgeRangeSignals {
   /// Returns the regulatory features Apple reports as required for the
   /// current user, based on their region and account settings (iOS 26.4+).
   ///
-  /// Use this to decide whether you need to prompt at all: an empty set
-  /// means Apple affirmatively reports that no regulatory action is
-  /// required for this user. If the set does not contain
-  /// [AgeRegulatoryFeature.declaredAgeRangeRequired], Apple imposes no
-  /// obligation to request this user's age range.
+  /// An empty set means none of the known [AgeRegulatoryFeature] values
+  /// apply, which is not clearance on its own: per Apple DTS a regulation
+  /// newer than the enum can leave the set empty while
+  /// [isEligibleForAgeFeatures] returns `true`, and the obligation still
+  /// stands, so check eligibility before reading an empty set as permission
+  /// to skip the prompt.
   ///
   /// Returns an empty set on Android: the Play Age Signals API has no
   /// equivalent concept and implicitly limits itself to regions where it

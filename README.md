@@ -392,6 +392,8 @@ if (obligated) {
 
 This is the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features); `checkAgeSignals()` never calls it for you (see [Regional Eligibility](#regional-eligibility-ios-262-1) under Testing for why). It is not made redundant by `getRequiredRegulatoryFeatures()`: Apple DTS [states](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022) that the feature set can be empty while this returns `true`, for regulations newer than the enum, and the obligation still stands. Treat `true` as the obligation and the feature set as the detail.
 
+Treat `false` as Apple's current answer, not a stable region flag. Apple has not said whether the value is accurate before the user has accepted a sharing prompt, and devices in a regulated region have been seen flipping from `true` to `false` with no OS or account change ([Apple Developer Forums](https://developer.apple.com/forums/thread/820699)). If a law applies to you regardless, keep a caller-side fallback rather than letting `false` alone suppress the prompt.
+
 The call runs under a 10-second deadline; a timeout surfaces as `ApiErrorException`. Apple caches the value, so a sandbox scenario change only shows up after a relaunch.
 
 ### Regulatory Features (iOS 26.4+)
@@ -417,7 +419,7 @@ if (features
 }
 ```
 
-An empty set means Apple affirmatively reports that nothing is required. On Android the set is always empty (the Play API has no equivalent concept). On iOS below 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement cannot be checked; catch it and keep your own regional logic for those devices:
+An empty set means none of the known `AgeRegulatoryFeature` values apply, which is not clearance on its own: per Apple DTS a regulation newer than the enum can leave the set empty while `isEligibleForAgeFeatures()` returns `true`, and the obligation still stands (see [Regional Eligibility](#regional-eligibility-ios-262)). On Android the set is always empty (the Play API has no equivalent concept). On iOS below 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement cannot be checked; catch it and keep your own regional logic for those devices:
 
 ```dart
 Set<AgeRegulatoryFeature> features;
@@ -521,9 +523,9 @@ Main class for interacting with the plugin.
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user. On Android, call `requestAgeSignalsAccess()` first; without shared access the API returns no signals and `status` is `unknown`.
 
-- `Future<bool> isEligibleForAgeFeatures()` - Reports whether Apple considers the current user subject to age assurance (iOS 26.2+). Pair it with `getRequiredRegulatoryFeatures()` for the specifics; an empty feature set alongside `true` still means obligated. Guarded by a 10-second deadline (timeout surfaces as `ApiErrorException`). Throws `UnsupportedPlatformException` on Android, on iOS below 26.2 and in apps built with a pre-26.2 SDK (Xcode < 26.2), so `false` always means Apple reports no obligation. Play limits itself to covered regions on its own, so on Android go straight to `requestAgeSignalsAccess()`.
+- `Future<bool> isEligibleForAgeFeatures()` - Reports whether Apple considers the current user subject to age assurance (iOS 26.2+). Pair it with `getRequiredRegulatoryFeatures()` for the specifics (iOS 26.4+, so on 26.2-26.3 that second call throws `UnsupportedPlatformException`); an empty feature set alongside `true` still means obligated. Guarded by a 10-second deadline (timeout surfaces as `ApiErrorException`). Throws `UnsupportedPlatformException` on Android, on iOS below 26.2 and in apps built with a pre-26.2 SDK (Xcode < 26.2), so `false` is always Apple's own answer; treat it as Apple's current report, not a stable region flag (see [Regional Eligibility](#regional-eligibility-ios-262)). Play limits itself to covered regions on its own, so on Android go straight to `requestAgeSignalsAccess()`.
 
-- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means Apple affirmatively reports nothing is required; if `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
+- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means none of the known `AgeRegulatoryFeature` values apply, but a regulation newer than the enum can leave it empty while `isEligibleForAgeFeatures()` is `true` and the obligation stands, so check eligibility before reading an empty set as clearance. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
 
 - `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})` - Shows Apple's system sheet for acknowledging a significant app change (iOS 26.4+). Completing normally means the person acknowledged; every other outcome throws. `UnsupportedPlatformException` on Android and on iOS below 26.4 rather than silently succeeding, so your compliance flow can't be fooled by a no-op. `ApiNotAvailableException` when Apple reports the sheet unavailable, which Apple also uses when the person dismisses it, so don't treat that as proof the sheet never appeared. `UserCancelledException` on explicit cancellation and `ApiErrorException` for other failures.
 
@@ -631,7 +633,7 @@ Play does not return a single status. The plugin derives it from the age band Pl
 
 **§ `source` may be `null`** for an unrecognized/future declaration type, even for `verified`/`supervised`. Apple's confirmation methods (payment card, government ID, etc.) map to `confirmed` rather than `null`; see [AgeDeclarationSource](#agedeclarationsource).
 
-**Note:** iOS no longer returns `unknown` from an eligibility pre-check (as of 0.6.0); that check was removed (see [Regional Eligibility](#regional-eligibility-ios-262)). It can still return `unknown` for a shared range that carries no lower bound, since that shape yields no verdict. Android reports `unknown` for the same shape.
+**Note:** iOS no longer returns `unknown` from an eligibility pre-check (as of 0.6.0); that check was removed (see [Regional Eligibility](#regional-eligibility-ios-262-1)). It can still return `unknown` for a shared range that carries no lower bound, since that shape yields no verdict. Android reports `unknown` for the same shape.
 
 ### AgeSignalsStatus
 
@@ -643,7 +645,7 @@ Enum representing the verification status:
 - `supervisedApprovalDenied` - User is supervised and the parent denied the significant change (Android only)
 - `declared` - **Deprecated, no longer returned.** It conflated the verdict with how the age was established, so a self-declared adult could not clear a `verified` gate while the stronger `tierC` and `tierD` passed automatically. Read `ageRangeSource == AgeRangeSource.tierA` instead
 - `declined` - User declined to share age (iOS only; on Android a decline surfaces as `AgeSignalsAccessStatus.notShared` from the access request)
-- `unknown` - No verdict available: access not shared or verification required (Android), the API is unavailable, or the platform reported a range with no lower bound. iOS no longer returns it from an eligibility pre-check (removed in 0.6.0, see [Regional Eligibility](#regional-eligibility-ios-262)), but does for a bandless range
+- `unknown` - No verdict available: access not shared or verification required (Android), the API is unavailable, or the platform reported a range with no lower bound. iOS no longer returns it from an eligibility pre-check (removed in 0.6.0, see [Regional Eligibility](#regional-eligibility-ios-262-1)), but does for a bandless range
 
 ### AgeSignalsAccessStatus
 

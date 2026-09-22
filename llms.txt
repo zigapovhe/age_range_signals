@@ -28,7 +28,7 @@ Constraints that are easy to get wrong:
 - **Nullable age bounds.** Null when nothing was shared. A `verified` result always has `ageLower` set. `ageUpper` is null only for Play's open-ended 18+ band, so a lower gate can yield a closed verified band; never use `ageUpper == null` as a proxy for adult. The two `supervisedApproval*` statuses can arrive with no band at all.
 - **Android needs an Activity.** The plugin is `ActivityAware` because Play hosts its sharing prompt; without one, `requestAgeSignalsAccess()` throws `ApiErrorException` with `PRESENTATION_CONTEXT_UNAVAILABLE`.
 - **Testing.** `useMockData` and `mockData` are Android only, backed by Google's `FakeAgeSignalsManager`, and only work in **debuggable** builds: a release build throws `MockDataNotAllowedException`, because the fake manager forges age signals. They are silently ignored on iOS, which has no testing utility and needs a real device on iOS 26.2+.
-- **`isEligibleForAgeFeatures()`** (iOS 26.2+) is Apple's obligation check and the documented first step before `checkAgeSignals()`, which never calls it for you. Apple DTS says `getRequiredRegulatoryFeatures()` can be empty while this is `true` and the obligation still stands, so pre-gate on this and read the feature set for detail. 10-second deadline (timeout is `ApiErrorException`). Throws `UnsupportedPlatformException` on Android, below iOS 26.2 and on pre-26.2 SDKs, so `false` always means Apple reports no obligation.
+- **`isEligibleForAgeFeatures()`** (iOS 26.2+) is Apple's obligation check and the documented first step before `checkAgeSignals()`, which never calls it for you. Apple DTS says `getRequiredRegulatoryFeatures()` can be empty while this is `true` and the obligation still stands, so apps that only prompt obligated users need both: this for the obligation, the feature set for detail. Apps happy to show the voluntary sheet everywhere skip it and call `checkAgeSignals()` directly. 10-second deadline (timeout is `ApiErrorException`). Throws `UnsupportedPlatformException` on Android, below iOS 26.2 and on pre-26.2 SDKs, so `false` is always Apple's own answer; treat it as the current report, not a stable region flag, and keep a caller-side fallback where a law applies regardless. Added in 0.10.0.
 - **Platform floors.** Android API 23+ with Google Play services. iOS 26.0 for the base API, 26.2 for regional eligibility, 26.4 for regulatory features. iOS also needs Apple's DeclaredAgeRange entitlement; a missing or unapproved one throws `MissingEntitlementException`.
 - **Google Play policy.** Age Signals data may be used only to deliver age-appropriate experiences. Never route it into advertising, marketing, profiling, or analytics. Violations risk API termination and app suspension, so do not log results to an analytics SDK.
 
@@ -44,7 +44,7 @@ Errors all extend `AgeSignalsException`, which carries `code` and a `details` st
 
 ## Optional
 
-- [Example app](https://github.com/zigapovhe/age_range_signals/blob/main/example/lib/main.dart): runnable demo covering both platforms, the two-call access flow, and the regulatory features UI
+- [Example app](https://github.com/zigapovhe/age_range_signals/blob/main/example/lib/main.dart): runnable demo covering both platforms, the two-call access flow, the eligibility check, and the regulatory features UI
 - [pub.dev package](https://pub.dev/packages/age_range_signals)
 - [Google Play Age Signals API](https://developer.android.com/google/play/age-signals)
 - [Apple DeclaredAgeRange](https://developer.apple.com/documentation/declaredagerange)
