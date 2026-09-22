@@ -26,6 +26,8 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             handleRequestAgeSignalsAccess(result: result)
         case "checkAgeSignals":
             handleCheckAgeSignals(result: result)
+        case "isEligibleForAgeFeatures":
+            handleIsEligibleForAgeFeatures(result: result)
         case "getRequiredRegulatoryFeatures":
             handleGetRequiredRegulatoryFeatures(result: result)
         case "showSignificantUpdateAcknowledgment":
@@ -130,8 +132,8 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
             // hang indefinitely (with no timeout the whole call would hang) and it returns
             // false before the user has ever accepted a prompt, only updating on a later
             // relaunch (reported on the Apple Developer Forums, threads 807906 & 809829).
-            // Apple's own guidance is to call requestAgeRange() directly, which is the
-            // source of truth, so that is what we do here.
+            // requestAgeRange() is the source of truth for the range; apps that want the
+            // eligibility check opt in via handleIsEligibleForAgeFeatures, under a deadline.
             do {
                 let response: AgeRangeService.Response
                 switch self.ageGates.count {
@@ -418,6 +420,42 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         }
     }
     #endif
+
+    private func handleIsEligibleForAgeFeatures(result: @escaping FlutterResult) {
+        // Same SDK guard as the 26.2 symbols above: Xcode 26.2 ships Swift 6.2.3.
+        #if canImport(DeclaredAgeRange) && compiler(>=6.2.3)
+        if #available(iOS 26.2, *) {
+            Task { @MainActor in
+                do {
+                    let eligible = try await self.withDeadline(seconds: 10) {
+                        try await AgeRangeService.shared.isEligibleForAgeFeatures
+                    }
+                    result(eligible)
+                } catch AgeRangeService.Error.notAvailable {
+                    result(FlutterError(
+                        code: "API_NOT_AVAILABLE",
+                        message: "The age features eligibility service is unavailable",
+                        details: nil
+                    ))
+                } catch {
+                    let nsError = error as NSError
+                    result(FlutterError(
+                        code: "API_ERROR",
+                        message: "isEligibleForAgeFeatures failed: \(error.localizedDescription)",
+                        details: "Domain: \(nsError.domain) | Code: \(nsError.code)"
+                    ))
+                }
+            }
+            return
+        }
+        #endif
+        // Erroring keeps `false` reserved for Apple reporting no obligation.
+        result(FlutterError(
+            code: "UNSUPPORTED_PLATFORM",
+            message: "Age features eligibility requires iOS 26.2 and an app built with the iOS 26.2 SDK",
+            details: nil
+        ))
+    }
 
     private func handleGetRequiredRegulatoryFeatures(result: @escaping FlutterResult) {
         #if canImport(DeclaredAgeRange) && compiler(>=6.3)

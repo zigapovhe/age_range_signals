@@ -300,6 +300,14 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "checkAgeSignals" -> {
                 checkAgeSignals(result)
             }
+            "isEligibleForAgeFeatures" -> {
+                // Apple-only concept; Play limits itself to covered regions implicitly.
+                result.error(
+                    "UNSUPPORTED_PLATFORM",
+                    "Age features eligibility is an iOS 26.2+ DeclaredAgeRange property; Android has no equivalent",
+                    null
+                )
+            }
             "getRequiredRegulatoryFeatures" -> {
                 // Apple-only concept. Play Age Signals has no regulatory
                 // feature flags; it limits itself to covered regions

@@ -42,6 +42,7 @@ for the exhaustive version.
     - [Basic Example](#basic-example)
     - [Handling Every Status and Error](#handling-every-status-and-error)
     - [Handling verificationRequired (Android)](#handling-verificationrequired-android)
+    - [Regional Eligibility (iOS 26.2+)](#regional-eligibility-ios-262)
     - [Regulatory Features (iOS 26.4+)](#regulatory-features-ios-264)
     - [18+ Only App](#18-only-app)
     - [Generally Available App (No Age Restrictions)](#generally-available-app-no-age-restrictions)
@@ -79,6 +80,7 @@ for the exhaustive version.
 - ✅ Cross-platform support for Android and iOS
 - ✅ Google Play Age Signals API integration for Android (API 23+), including the age sharing prompt via `requestAgeSignalsAccess()` (age-signals 0.0.4)
 - ✅ Apple DeclaredAgeRange API integration for iOS (26.0+)
+- ✅ Regional eligibility check (`isEligibleForAgeFeatures()`) for iOS (26.2+)
 - ✅ Regulatory feature detection and significant update acknowledgment for iOS (26.4+)
 - ✅ Swift Package Manager (SPM) support for iOS
 - ✅ Configurable age gates for iOS
@@ -368,6 +370,30 @@ class _AgeGateState extends State<AgeGate> with WidgetsBindingObserver {
 }
 ```
 
+### Regional Eligibility (iOS 26.2+)
+
+Apple's `requestAgeRange()` shows its sharing sheet to people everywhere, including regions with no age assurance law, where sharing is voluntary. If you only want to prompt people Apple considers subject to age assurance, ask first:
+
+```dart
+bool obligated;
+try {
+  obligated = await AgeRangeSignals.instance.isEligibleForAgeFeatures();
+} on UnsupportedPlatformException {
+  // Android, iOS below 26.2, or a pre-26.2 SDK: Apple cannot answer here.
+  // Keep your own regional decision for these devices.
+  obligated = yourOwnRegionalFallback();
+}
+
+if (obligated) {
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+  // ...
+}
+```
+
+This is the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features); `checkAgeSignals()` never calls it for you (see [Regional Eligibility](#regional-eligibility-ios-262-1) under Testing for why). It is not made redundant by `getRequiredRegulatoryFeatures()`: Apple DTS [states](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022) that the feature set can be empty while this returns `true`, for regulations newer than the enum, and the obligation still stands. Treat `true` as the obligation and the feature set as the detail.
+
+The call runs under a 10-second deadline; a timeout surfaces as `ApiErrorException`. Apple caches the value, so a sandbox scenario change only shows up after a relaunch.
+
 ### Regulatory Features (iOS 26.4+)
 
 On iOS 26.4+ you can ask Apple which regulatory actions apply to the current user before deciding whether to prompt at all:
@@ -494,6 +520,8 @@ Main class for interacting with the plugin.
 - `Future<AgeSignalsAccessStatus> requestAgeSignalsAccess()` - Requests access to the user's age signals (age-signals 0.0.4). On Android this may show Google Play's in-app age sharing prompt over your activity; only call `checkAgeSignals()` when the result is `shared`. A decline is not an error - it comes back as `notShared`. In mandatory-verification regions Play skips the prompt entirely: already-verified and supervised users come back `shared`, while unverified users come back `verificationRequired` and complete verification in the Play Store app. On iOS it returns `shared` without showing anything, because Apple gathers consent inside `checkAgeSignals()` itself; a refusal surfaces there as `AgeSignalsStatus.declined`. It is not unconditional: iOS throws `UnsupportedPlatformException` below 26.0 and `NotInitializedException` when `initialize()` supplied no gates, so it doubles as a pre-flight there.
 
 - `Future<AgeSignalsResult> checkAgeSignals()` - Checks the age signals for the current user. On Android, call `requestAgeSignalsAccess()` first; without shared access the API returns no signals and `status` is `unknown`.
+
+- `Future<bool> isEligibleForAgeFeatures()` - Reports whether Apple considers the current user subject to age assurance (iOS 26.2+). Pair it with `getRequiredRegulatoryFeatures()` for the specifics; an empty feature set alongside `true` still means obligated. Guarded by a 10-second deadline (timeout surfaces as `ApiErrorException`). Throws `UnsupportedPlatformException` on Android, on iOS below 26.2 and in apps built with a pre-26.2 SDK (Xcode < 26.2), so `false` always means Apple reports no obligation. Play limits itself to covered regions on its own, so on Android go straight to `requestAgeSignalsAccess()`.
 
 - `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()` - Returns which regulatory actions Apple requires for the current user (iOS 26.4+). An empty set means Apple affirmatively reports nothing is required; if `declaredAgeRangeRequired` is absent, you are not required to prompt this user. Returns an empty set on Android (the Play API has no equivalent concept). Throws `UnsupportedPlatformException` on iOS below 26.4 and in apps built with a pre-26.4 SDK (Xcode < 26.4), where the requirement cannot be checked.
 
@@ -816,11 +844,11 @@ For app-level UI/flow testing during development, you can also bypass age verifi
 
 #### Regional Eligibility (iOS 26.2+)
 
-The plugin calls Apple's `requestAgeRange()` directly and does **not** pre-gate on `isEligibleForAgeFeatures`. Earlier versions (0.4.0-0.5.x) checked `isEligibleForAgeFeatures` first and returned `unknown` for users reported as outside an applicable region, but that property proved unreliable in the iOS 26.2.x window: it can hang indefinitely (which hung `checkAgeSignals()` entirely) and it reports `false` before the user has accepted any prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Following Apple's guidance, the plugin now treats `requestAgeRange()` as the source of truth.
+`checkAgeSignals()` calls Apple's `requestAgeRange()` directly and does **not** pre-gate on `isEligibleForAgeFeatures` internally. Earlier versions (0.4.0-0.5.x) did, returning `unknown` for users reported as outside an applicable region, but that property proved unreliable in the iOS 26.2.x window: it can hang indefinitely (which hung `checkAgeSignals()` entirely) and in sandbox it reports `false` before the user has accepted any prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Since 0.6.0, `requestAgeRange()` is the source of truth for the age range, and **iOS no longer returns `AgeSignalsStatus.unknown` from an eligibility pre-check**.
 
-As a result, **iOS no longer returns `AgeSignalsStatus.unknown` from an eligibility pre-check** (as of 0.6.0). Region applicability is reflected by `requestAgeRange()` itself.
+The property is still Apple's documented obligation check, and DTS [confirms](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022) that `requiredRegulatoryFeatures` does not replace it, so it is exposed as the opt-in `isEligibleForAgeFeatures()` under a 10-second deadline (see [Regional Eligibility](#regional-eligibility-ios-262) under Usage). In sandbox, sign into the sandbox account **only** under Settings → Developer and relaunch after changing the Age Assurance scenario; the value is cached.
 
-On iOS 26.4+, `getRequiredRegulatoryFeatures()` is the reliable way to check what Apple requires for the current user before prompting; it answers a more precise question than the old eligibility flag ever did.
+On iOS 26.4+, `getRequiredRegulatoryFeatures()` adds which regulatory actions apply. Use the eligibility flag for the obligation and the feature set for what to do about it.
 
 **Behavior:**
 - **iOS 26.0+**: Calls `requestAgeRange()` directly
