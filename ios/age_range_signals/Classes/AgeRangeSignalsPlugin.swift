@@ -168,14 +168,14 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                 case .sharing(let range):
                     let source = self.declarationName(range.ageRangeDeclaration)
 
-                    // Determine status based on highest configured age gate.
-                    // A shared range with no lower bound carries no verdict, so
-                    // report `unknown` rather than treating it as age 0, which
-                    // would silently mean "below every gate". Android reports
-                    // `unknown` for the same shape.
+                    // Apple documents a nil lowerBound as "below your lowest
+                    // specified age", so the range starts at 0, the same shape
+                    // Play reports for its youngest band. Only a range with
+                    // neither bound carries no verdict.
                     let highestGate = ageGates.max() ?? 0
+                    let lowerBound = range.lowerBound ?? (range.upperBound == nil ? nil : 0)
                     let status: String
-                    if let lowerBound = range.lowerBound {
+                    if let lowerBound {
                         status = lowerBound >= highestGate ? "verified" : "supervised"
                     } else {
                         status = "unknown"
@@ -185,7 +185,7 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
 
                     result(self.ageRangeResultMap(
                         status: status,
-                        ageLower: range.lowerBound,
+                        ageLower: lowerBound,
                         ageUpper: range.upperBound,
                         source: source,
                         activeParentalControls: parentalControls.isEmpty ? nil : parentalControls

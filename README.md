@@ -465,9 +465,9 @@ Android never returns `declined`. Play reports `notShared` both for a genuine re
 | status | ageLower / ageUpper | source | Notes |
 |--------|---------------------|--------|-------|
 | `verified` | Populated / `null` or populated | Populated* | User shared; lower bound at or above your highest gate (`ageUpper` is `null` for an open-ended top range such as 18+) |
-| `supervised` | Populated / Populated | Populated* | User shared; lower bound below your highest gate |
+| `supervised` | Populated / Populated | Populated* | User shared; lower bound below your highest gate. For someone under your lowest gate Apple sends no lower bound, and the plugin reports `ageLower: 0`, like Android's youngest band |
 | `declined` | `null` / `null` | `null` | User declined to share |
-| `unknown` | `null` / passed through | Populated* | User shared, but Apple reported no lower bound, so there is no verdict |
+| `unknown` | `null` / `null` | Populated* | User shared, but Apple reported no bounds at all, so there is no verdict |
 
 \* `source` can be `null` for a declaration type the plugin doesn't recognize, even for `verified` or `supervised`. Apple's confirmation methods (payment card, government ID and so on) map to `confirmed`, not `null`.
 
@@ -478,7 +478,7 @@ Android never returns `declined`. Play reports `notShared` both for a genuine re
 - `supervisedApprovalPending` (Android): a significant change awaits parent approval
 - `supervisedApprovalDenied` (Android): the parent denied the significant change
 - `declined` (iOS): the user declined to share. On Android a decline is `AgeSignalsAccessStatus.notShared` from the access request
-- `unknown`: no verdict. Access wasn't shared or verification is required (Android), the API is unavailable, or the platform reported a range with no lower bound
+- `unknown`: no verdict. Access wasn't shared or verification is required (Android), the API is unavailable, or the platform reported a range with no bounds at all
 - `declared`: deprecated and never returned. It mixed up the verdict with how the age was established, so a self-declared adult could not clear a `verified` gate while the stronger `tierC` and `tierD` passed automatically. Read `ageRangeSource == AgeRangeSource.tierA` instead
 
 ### AgeSignalsAccessStatus
