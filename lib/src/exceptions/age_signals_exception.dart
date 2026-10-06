@@ -70,13 +70,18 @@ class NetworkErrorException extends AgeSignalsException {
   const NetworkErrorException(super.message, [super.code, super.details]);
 }
 
-/// Exception thrown when the user is not signed in (Android).
+/// Exception thrown on iOS 27+ when no Apple Account is signed in, or the
+/// signed-in account (such as a managed one) isn't eligible for age range
+/// sharing.
 class UserNotSignedInException extends AgeSignalsException {
   /// Creates a [UserNotSignedInException].
   const UserNotSignedInException(super.message, [super.code, super.details]);
 }
 
 /// Exception thrown when the user cancels the age verification prompt.
+///
+/// On iOS 27+ this also covers a person declining the age range sharing
+/// setup.
 class UserCancelledException extends AgeSignalsException {
   /// Creates a [UserCancelledException].
   const UserCancelledException(super.message, [super.code, super.details]);
