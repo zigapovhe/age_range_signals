@@ -7,7 +7,7 @@ name: Flutter
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -31,7 +31,8 @@ jobs:
         run: flutter test
 
   ios:
-    runs-on: macos-latest
+    # Xcode 27 compiles the Swift 6.4 branch (iOS 27 errors).
+    runs-on: xcode-27
 
     steps:
       - name: Clone repository
@@ -40,6 +41,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - run: xcodebuild -version
       - run: flutter pub get
         working-directory: example
       - name: Build example iOS app (compile guards, no signing)
