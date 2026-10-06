@@ -210,6 +210,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                     details: nil
                 ))
             } catch {
+                if let mapped = self.ios27FlutterError(error) {
+                    result(mapped)
+                    return
+                }
                 let nsError = error as NSError
                 let errorMessage = error.localizedDescription
                 let errorDomain = nsError.domain
@@ -359,6 +363,40 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
         #endif
         return names
     }
+
+    /// Maps the AgeRangeService.Error cases added in iOS 27 onto existing
+    /// channel codes so they reach Dart as typed exceptions. Xcode 27 is the
+    /// first to ship Swift 6.4; older SDKs lack the cases, so callers fall
+    /// back to their generic mapping.
+    private func ios27FlutterError(_ error: Error) -> FlutterError? {
+        #if compiler(>=6.4)
+        if #available(iOS 27.0, *), let error = error as? AgeRangeService.Error {
+            switch error {
+            case .declinedOnboarding:
+                return FlutterError(
+                    code: "USER_CANCELLED",
+                    message: "The person declined the age range sharing setup",
+                    details: nil
+                )
+            case .invalidAccount:
+                return FlutterError(
+                    code: "USER_NOT_SIGNED_IN",
+                    message: "No Apple Account eligible for age range sharing is signed in",
+                    details: nil
+                )
+            case .network:
+                return FlutterError(
+                    code: "NETWORK_ERROR",
+                    message: "A network or server issue prevented the age range request",
+                    details: nil
+                )
+            default:
+                break
+            }
+        }
+        #endif
+        return nil
+    }
     #endif
 
     #if canImport(Synchronization)
@@ -438,6 +476,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         details: nil
                     ))
                 } catch {
+                    if let mapped = self.ios27FlutterError(error) {
+                        result(mapped)
+                        return
+                    }
                     let nsError = error as NSError
                     result(FlutterError(
                         code: "API_ERROR",
@@ -490,6 +532,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         details: nil
                     ))
                 } catch {
+                    if let mapped = self.ios27FlutterError(error) {
+                        result(mapped)
+                        return
+                    }
                     let nsError = error as NSError
                     result(FlutterError(
                         code: "API_ERROR",
@@ -557,6 +603,10 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
                         details: nil
                     ))
                 } catch {
+                    if let mapped = self.ios27FlutterError(error) {
+                        result(mapped)
+                        return
+                    }
                     let nsError = error as NSError
                     if error.localizedDescription.lowercased().contains("cancel") {
                         result(FlutterError(
