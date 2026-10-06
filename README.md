@@ -79,8 +79,9 @@ These laws are in flux, but the advice doesn't change: keep the plugin integrate
 - **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026, when Play started returning age signals for Brazilian users. On the Apple side, from February 24, 2026 the App Store blocks Brazilian users from downloading 18+ apps unless confirmed adult, and apps declaring loot boxes are automatically rated 18+ on the Brazil storefront. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) · [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Australia:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Australia from downloading 18+ apps unless confirmed adult. Separate from the [Social Media Minimum Age Act](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions) (in effect December 10, 2025), and from App Store content *ratings*, which this plugin does not handle. eSafety's [Age-Restricted Material Codes](https://www.esafety.gov.au/industry/codes/register-online-industry-codes-standards) separately require every app store to check age before an 18+ download; that store-level check is required from September 9, 2026 and, like content ratings, sits outside this plugin. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Singapore:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Singapore from downloading 18+ apps unless confirmed adult. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
-- **Texas (SB 2420):** In effect since June 4, 2026. The Fifth Circuit [stayed](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) the December 2025 injunction pending appeal, and in July 2026 the Supreme Court [declined to intervene](https://www.scotusblog.com/2026/07/supreme-court-allows-texas-to-enforce-law-requiring-age-verification-and-parental-consent-on-app/), so the APIs return live data for Texas users. The merits appeal was argued August 4, 2026; a decision is still pending. See [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
+- **Texas (SB 2420):** In effect since June 4, 2026. The Fifth Circuit [stayed](https://www.texastribune.org/2026/05/28/texas-apple-google-app-store-age-verification/) the December 2025 injunction pending appeal, and in July 2026 the Supreme Court [declined to intervene](https://www.scotusblog.com/2026/07/supreme-court-allows-texas-to-enforce-law-requiring-age-verification-and-parental-consent-on-app/), so the law is in force. Both stores apply it to new accounts only: Apple to new Apple Accounts in Texas from June 4, 2026 ([Apple News](https://developer.apple.com/news/?id=sg176nne)), Google to eligible Texas users who created their accounts after May 28, 2026. The merits appeal was argued August 4, 2026; a decision is still pending. See [Issue #21](https://github.com/zigapovhe/age_range_signals/issues/21).
 - **Utah and Louisiana:** Statutory obligations are delayed, but Apple already shares age categories for these users. Utah's ASAA moved to May 6, 2027 ([HB 498](https://www.wiley.law/wiley-connect/utah-amends-app-store-accountability-act-asaa-key-obligations-delayed-until-may-6-2027), which also removed the AG's enforcement authority, leaving only a private right of action for minors and their guardians); Louisiana moved to July 1, 2027 ([HB 977](https://www.alstonprivacy.com/louisiana-delays-app-store-accountability-effective-date-to-july-2027/)). Independently of those dates, Apple shares age categories through DeclaredAgeRange for new Apple Accounts created in Utah since May 6, 2026 and in Louisiana since July 1, 2026, so `checkAgeSignals()` can return real data for those users today. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
+- **Apple Time Allowances (iOS 27):** Not a law, but an App Store requirement. Parents can limit time in Entertainment, Games and Social Media apps, and since September 2026 every submission has to say whether the app has social media capabilities. Apps that do get a minimum 13+ rating and land in the Social Media category. If those features are disabled for anyone under 13, the app stays out of that category for under-13s, but Apple then requires you to check age ranges with the Declared Age Range API at a minimum (a gate at 13 gives you that split). [Apple News](https://developer.apple.com/news/?id=0d2gpmml)
 
 ## Platform Setup
 
@@ -89,7 +90,8 @@ These laws are in flux, but the advice doesn't change: keep the plugin integrate
 There's nothing to add to Gradle; the plugin depends on `com.google.android.play:age-signals` 0.0.4 itself. You need:
 
 - `minSdk` 23 or higher
-- Google Play Services installed and up to date on the device
+- The Google Play Store and Google Play Services installed and up to date on the device
+- Your app installed from Google Play. Play blocks sideloaded installs unless the device's Google account is a license tester (see [Android Testing](#android-testing))
 - AGP 9 with built-in Kotlin, or AGP 8.x with the Kotlin Gradle plugin 2.0+ on your project's classpath (any recent Flutter template has it)
 
 The Play Age Signals API is still in beta and only returns real data for users in covered regions (see [Regulatory Status](#regulatory-status)). Use [mock data](#android-testing) to test anywhere else.
@@ -125,7 +127,7 @@ If `com.apple.developer.declared-age-range` isn't listed, see [MissingEntitlemen
 
 Reading age signals takes two calls. Play split them in age-signals 0.0.4 and the plugin uses the same flow on iOS, but each platform shows its UI in a different one.
 
-`requestAgeSignalsAccess()` asks for access. On Android it can show Play's age sharing sheet over your activity, so call it from a foregrounded app. It returns `shared`, `notShared` (a decline, not an error), `verificationRequired`, or `unknown` for a state the plugin doesn't recognize. Only call `checkAgeSignals()` after `shared`. If you skip the access call, Play never prompts and `checkAgeSignals()` reports `unknown`. In regions where verification is mandatory Play skips the sheet entirely: users who are already verified or supervised come back `shared`, and unverified users come back `verificationRequired` and have to finish in the Play Store ([handling it](#handling-verificationrequired-android)).
+`requestAgeSignalsAccess()` asks for access. On Android it can show Play's age sharing sheet over your activity, so call it from a foregrounded app. It returns `shared`, `notShared` (a decline, not an error), `verificationRequired`, or `unknown` for a state the plugin doesn't recognize. Only call `checkAgeSignals()` after `shared`. If you skip the access call, Play never prompts and `checkAgeSignals()` reports `unknown`. In US states whose laws require app stores to provide verified ages, Play skips the sheet entirely: users who are already verified or supervised come back `shared`, and unverified users come back `verificationRequired` and have to finish in the Play Store ([handling it](#handling-verificationrequired-android)).
 
 On iOS, `requestAgeSignalsAccess()` shows nothing and returns `shared`. It still throws `UnsupportedPlatformException` below iOS 26.0 and `NotInitializedException` when `initialize()` supplied no gates, so it doubles as a pre-flight check.
 
@@ -135,15 +137,15 @@ On iOS, `requestAgeSignalsAccess()` shows nothing and returns `shared`. It still
 
 Call `initialize()` with the same gates on both platforms, for example `[13, 16, 18]`.
 
-iOS requires them. Apple buckets the user's age against your gates and accepts 1 to 3 of them, at least 2 years apart (it rejects `[13, 14]` with an invalid-request error). Without gates, `requestAgeSignalsAccess()` and `checkAgeSignals()` throw `NotInitializedException`; with more than 3, `checkAgeSignals()` throws `ApiErrorException`. `initialize()` itself doesn't validate them.
+iOS requires them. Apple buckets the user's age against your gates and accepts 1 to 3 of them, at least 2 years apart (it rejects `[13, 14]` with an invalid-request error). Without gates, `requestAgeSignalsAccess()` and `checkAgeSignals()` throw `NotInitializedException`; with more than 3, `checkAgeSignals()` throws `ApiErrorException`. `initialize()` itself doesn't validate them. In some regulated regions people can't decline sharing and the region's own age gates replace yours, so the range you get back may not line up with your gates. Apple also caches the range: when a person ages into a new one, it keeps returning the old range until the anniversary of their original declaration, unless they update it in Settings.
 
-Play ignores them and reports fixed bands instead: 0-12, 13-15, 16-17 and 18+. You can't change those through the plugin, only in Play Console. The plugin uses your highest gate as the bar for `verified`: 18 until you supply gates, and a later `initialize()` that leaves them out keeps the ones you already set.
+Play ignores them. It reports its default bands, 0-12, 13-15, 16-17 and 18+, unless you set up to three custom minimum ages on the Play Console's Age signals page (at least 2 years apart, changeable once a year). The plugin can't set those for you. The plugin uses your highest gate as the bar for `verified`: 18 until you supply gates, and a later `initialize()` that leaves them out keeps the ones you already set.
 
 `status` is the verdict and follows the same rule on both platforms: `verified` when the reported range starts at or above your highest gate, `supervised` when it falls below. It says nothing about whether a parent manages the account; on Android that's `ageRangeSource == AgeRangeSource.tierB`.
 
 How the age was established is a separate field: `ageRangeSource` (Play's tier) on Android, `source` (the declaration type) on iOS. Any tier can reach `verified`, and a tier is never the verdict on its own: `tierD` means an ID was checked, and that ID can read 12. A self-declared age is whatever the user entered, and nothing here can detect a falsified birthdate. Use these fields to set the minimum assurance you'll accept, as in [18+ Only App](#18-only-app).
 
-Because Play's bands are fixed, a gate that doesn't sit on a band edge effectively moves up to the next edge on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Gates on band edges (13, 16, 18) keep the two platforms in agreement.
+With the default bands, a gate that doesn't sit on a band edge effectively moves up to the next edge on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Gates on band edges (13, 16, 18), or custom Play ages that match your iOS gates, keep the two platforms in agreement.
 
 ## Choosing Your Integration Level
 
@@ -155,7 +157,7 @@ The plugin returns one age signal; how far you build on it depends on your app, 
 |-------|--------------|-----------------------------|
 | **1. Minimal** | Generally-available apps, no age-gated content | Call `requestAgeSignalsAccess()` then `checkAgeSignals()` once and leave the UX unchanged. See [Generally Available App](#generally-available-app-no-age-restrictions). |
 | **2. Targeted** | Apps with age-distinct areas (under/over 18, or 18+ only) | Gate those areas on `status` and the returned age range. See [Basic Example](#basic-example) and [18+ Only App](#18-only-app). |
-| **3. Full** | Apps squarely in scope of these laws | Treat the client signal as one input: enforce on your server (the client result can be spoofed), re-check when state changes, and handle every `status` and [exception](#exceptions). |
+| **3. Full** | Apps squarely in scope of these laws | Treat the client signal as one input: enforce on your server (the client result can be spoofed; on Android, Google suggests pairing it with the [Play Integrity API](https://developer.android.com/google/play/integrity/overview)), re-check when state changes, and handle every `status` and [exception](#exceptions). |
 
 ## Usage
 
@@ -241,11 +243,13 @@ try {
 } on NetworkErrorException {
   // Retry, or carry on without a signal.
 } on PlayServicesException {
-  // Android: ask the user to install or update Google Play Services.
+  // Android: ask the user to install or update the Play Store or Play Services.
 } on UserNotSignedInException {
-  // Android: ask the user to sign in to a Google account.
+  // iOS 27+: no eligible Apple Account is signed in.
 } on ApiNotAvailableException {
-  // Not available on this device or in this region.
+  // Android: outdated Play Store, or the app wasn't installed from Google Play.
+  // iOS: Apple couldn't share the range (unavailable here, or the person
+  // chose not to share at the prompt).
 } on UnsupportedPlatformException {
   // iOS below 26.0, or an app built without the DeclaredAgeRange SDK.
 } on ApiErrorException catch (e) {
@@ -321,7 +325,7 @@ if (obligated) {
 }
 ```
 
-This is the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features), and `checkAgeSignals()` never runs it for you. Versions 0.4.0 to 0.5.x did, returning `unknown` for users reported as outside an applicable region, and it went wrong in the iOS 26.2.x window: the property could hang indefinitely, taking `checkAgeSignals()` with it, and in sandbox it reported `false` until the user had accepted a prompt and the app was relaunched ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Since 0.6.0, `requestAgeRange()` alone decides the age range.
+This is the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features), and `checkAgeSignals()` never runs it for you. Versions 0.4.0 to 0.5.x did, returning `unknown` for users reported as outside an applicable region, and it went wrong in the iOS 26.2.x window: the property could hang indefinitely, taking `checkAgeSignals()` with it. In sandbox it also reported `false` until the user had accepted a prompt, only updating on a later relaunch ([Apple Developer Forums](https://developer.apple.com/forums/thread/809829)). Since 0.6.0, `requestAgeRange()` alone decides the age range.
 
 `getRequiredRegulatoryFeatures()` doesn't replace this check (and needs iOS 26.4, so on 26.2 and 26.3 this is all you have). Apple DTS [states](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022) that the feature set can be empty while this returns `true`, for regulations newer than the enum, and the obligation still stands. Treat `true` as the obligation and the feature set as the detail.
 
@@ -422,7 +426,7 @@ Use the singleton `AgeRangeSignals.instance`.
 - `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()`: which regulatory actions Apple requires for the user (iOS 26.4+). Always empty on Android. Throws `UnsupportedPlatformException` below iOS 26.4 and in apps built with Xcode older than 26.4. See [Regulatory Features](#regulatory-features-ios-264).
 - `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})`: shows Apple's sheet for acknowledging a significant app change (iOS 26.4+). Returning normally means the person acknowledged it. Every other outcome throws:
     - `UnsupportedPlatformException` on Android, below iOS 26.4 and in apps built with Xcode older than 26.4, rather than silently succeeding, so your compliance flow can't be fooled by a no-op
-    - `ApiNotAvailableException` when Apple reports the sheet unavailable. Apple also reports this when the person dismisses the sheet, so don't treat it as proof the sheet never appeared
+    - `ApiNotAvailableException` when Apple reports the sheet unavailable. Apple documents no separate error for a dismissed sheet and elsewhere reports a person's refusal the same way, so don't treat this as proof the sheet never appeared
     - `UserCancelledException` on explicit cancellation
     - `ApiErrorException` for other failures
 
@@ -450,7 +454,7 @@ Play doesn't return a single status. The plugin derives it from the age band Pla
 | `supervisedApprovalDenied` | `tierB` | Populated†, or `null` with no band yet | Populated | Parent denied the change; use the previously approved state |
 | `unknown` | `null` or any tier | `null` / `null` | `null` | Access not shared, verification required, or no age band reported |
 
-† `ageUpper` is `null` only for Play's open-ended 18+ band. With a lower gate a `verified` result can carry a closed band (gates `[13]` and Play's 16-17 band give `ageLower: 16, ageUpper: 17`), so don't use `ageUpper == null` as a proxy for "adult".
+† `ageUpper` is `null` only for Play's open-ended top band (18+ unless you set custom ages). With a lower gate a `verified` result can carry a closed band (gates `[13]` and Play's 16-17 band give `ageLower: 16, ageUpper: 17`), so don't use `ageUpper == null` as a proxy for "adult".
 
 The two approval statuses are reported whatever the age, because an outstanding parent decision matters either way. That includes users Play has no band for yet.
 
@@ -488,12 +492,12 @@ Returned by `requestAgeSignalsAccess()`:
 
 ### AgeRangeSource
 
-How Google Play established the age range (Android only), weakest to strongest assurance. The tier names are Google's own:
+How Google Play established the age range (Android only). The tier names and descriptions are Google's:
 
-- `tierA`: self-declared by the user
-- `tierB`: from a parent- or guardian-managed account
-- `tierC`: verified via credit card, email, selfie, government ID, or tax ID
-- `tierD`: verified via government ID plus selfie, or a Digital ID
+- `tierA`: the user self-declared their age
+- `tierB`: the age is managed by a parent or guardian
+- `tierC`: the age is assessed using a credit card, email address, selfie assessment, government ID, or tax ID
+- `tierD`: the age is checked using a government ID plus selfie assessment, or a Digital ID
 
 ### SignificantChangeStatus
 
@@ -509,7 +513,7 @@ How the age was declared (iOS only):
 
 - `selfDeclared`: by the user
 - `guardianDeclared`: by a guardian
-- `confirmed`: confirmed through a method such as a payment card or government ID, by the user or a guardian (iOS 26.2+). iOS 26.2 to 26.4 report each method as its own value and iOS 26.5 folds them into `confirmed`; the plugin reports `confirmed` for all of them
+- `confirmed`: confirmed through a method such as a payment card or government ID, by the user or a guardian (iOS 26.2+). iOS 26.2 added a separate value for each method, and the iOS 26.5 SDK deprecates those in favour of `confirmed`. The plugin reports `confirmed` for all of them
 
 ### AgeRegulatoryFeature
 
@@ -552,20 +556,20 @@ Every exception extends `AgeSignalsException` and carries a human-readable `mess
 
 | Exception | Thrown when |
 |-----------|-------------|
-| `ApiNotAvailableException` | The API isn't available on this device or in this region |
+| `ApiNotAvailableException` | The API isn't available. On Android: an outdated Play Store, or an app not installed from Google Play ([details](#api_not_available-android)). On iOS: Apple couldn't share the age range, because sharing isn't available for this user or region or because the person was prompted and chose not to share |
 | `UnsupportedPlatformException` | The OS version, or the SDK the app was built with, doesn't support the call |
 | `NotInitializedException` | iOS: `initialize()` hasn't supplied any gates |
 | `MissingEntitlementException` | iOS: the entitlement is missing from the signed app ([fix](#missingentitlementexception-ios)) |
-| `UserCancelledException` | iOS: the user cancelled the prompt |
-| `UserNotSignedInException` | Android: no Google account is signed in |
-| `NetworkErrorException` | Network or connection error |
-| `PlayServicesException` | Android: Google Play Services is unavailable or outdated |
+| `UserCancelledException` | iOS: the user cancelled the prompt, or (iOS 27+) declined the age range sharing setup |
+| `UserNotSignedInException` | iOS 27+: no Apple Account is signed in, or the account (such as a managed one) isn't eligible for age range sharing |
+| `NetworkErrorException` | A network or server issue stopped the request |
+| `PlayServicesException` | Android: the Play Store or Play Services is missing, outdated, or can't be reached |
 | `MockDataNotAllowedException` | Android: `useMockData: true` in a non-debuggable build ([why](#android-testing)) |
 | `ApiErrorException` | Any other platform API error |
 
 ## Legal Compliance
 
-Google Play only allows information from the Age Signals API to be used to provide age-appropriate content and experiences in compliance with laws. You may not use it for anything else, including advertising, marketing, user profiling, or analytics. Violations can lead to API access termination and app suspension.
+Google's [terms](https://developer.android.com/google/play/age-signals/overview#terms-service) only allow information from the Play Age Signals API to be used to provide age-appropriate content and experiences in compliance with laws, and only by the app that requested it. The [Play policy](https://support.google.com/googleplay/android-developer/answer/16585319#age_signals) spells out what's prohibited: advertising, marketing or personalization (including targeted ads), data analytics, user profiling or business intelligence, and selling, sharing or transferring the data to any third party except as strictly required by law. Using it for a prohibited purpose can get your API access terminated and your apps suspended or taken down from Google Play.
 
 The plugin doesn't collect or store any user data; age data comes straight from the platform APIs. Make sure your app's privacy policy describes how you use it.
 
@@ -619,15 +623,17 @@ Swap the `mockData` argument for any of these:
 
 Bands the mock fills in for you are real Play bands (0-12, 13-15, 16-17), with one exception: because the verdict is derived from the band, a verified mock defaults to an open-ended band starting at your highest gate (18 until you supply gates), with `ageUpper: null`. A real verified response reports Play's 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it exactly.
 
+To hit the real API from a sideloaded debug build, add the device's Google account as a license tester in Play Console. Otherwise Play blocks apps that weren't installed from Google Play with `APP_NOT_OWNED`, which the plugin reports as `ApiNotAvailableException`. The package name has to match the app configured in Play Console ([Google's guide](https://developer.android.com/google/play/age-signals/test-age-signals-api)).
+
 ### iOS Testing
 
 `useMockData` and `mockData` are ignored on iOS, because Apple provides no in-process mock for DeclaredAgeRange. Instead, Apple offers sandbox Age Assurance scenarios (iOS 26.2+) for getting real responses on a device. You need:
 
-- A real iOS 26.2+ device (no simulator support)
+- A real iOS 26.2+ device with Developer Mode enabled (no simulator support)
 - The `com.apple.developer.declared-age-range` capability registered on your App ID (see [iOS setup](#ios); a hand-edited entitlements key alone gets stripped at signing)
 - A Sandbox Apple Account signed in only under Settings → Developer → Sandbox Apple Account (not the normal iCloud sign-in, or eligibility misbehaves), with its App Store territory set to a region where Apple's age assurance applies (see [Regulatory Status](#regulatory-status))
 
-Then open Settings → Developer → Sandbox Apple Account → Manage → Age Assurance on the device, select a scenario, relaunch your app (the value is cached) and call `checkAgeSignals()`.
+Then open Settings → Developer → Sandbox Apple Account → Manage → Age Assurance on the device, select a scenario, relaunch your app (the value is cached) and call `checkAgeSignals()`. You can also configure test scenarios in App Store Connect.
 
 With age gates `[13, 16, 18]`, Apple's scenarios come through the plugin as follows:
 
@@ -636,12 +642,13 @@ With age gates `[13, 16, 18]`, Apple's scenarios come through the plugin as foll
 | Under 13, significant change approved | `supervised` | 0 | 12 | `guardianDeclared` |
 | 13 - 15, significant change approved | `supervised` | 13 | 15 | `guardianDeclared` |
 | 16 - 17, significant change declined | `supervised` | 16 | 17 | `guardianDeclared` |
-| 18+, age not confirmed | `verified` | 18 | `null` | `selfDeclared` |
-| 18+, age confirmed (either variant) | `verified` | 18 | `null` | `confirmed` |
+| 18+, age not confirmed, significant change not applicable | `verified` | 18 | `null` | `selfDeclared` |
+| 18+, age confirmed, significant change not applicable | `verified` | 18 | `null` | `confirmed` |
+| 18+, age confirmed, significant change applicable | `verified` | 18 | `null` | `confirmed` |
 
 The `source` column is what Apple documents for each scenario. The same Manage screen also offers Revoke App Consent, which only exercises App Store Server Notifications and changes nothing this plugin returns.
 
-> **The two "declines" are different.** A `declined` *status* means the user refused to share their age (DeclaredAgeRange `.declinedSharing`). The "16 - 17, significant change **declined**" sandbox scenario is not that. It still returns the 16-17 range via DeclaredAgeRange, so the plugin reports `supervised`. The "declined" there is a PermissionKit guardian-permission response, a separate Apple framework this plugin does not wrap. DeclaredAgeRange has no "denied" state, so a guardian decline or consent revocation surfaces as the user's real age range (`supervised`), not a distinct denied status. If you need the guardian approve/deny signal itself, use PermissionKit plus App Store Server Notifications.
+> **The two "declines" are different.** A `declined` *status* means the user refused to share their age (DeclaredAgeRange `.declinedSharing`). The "16 - 17, significant change **declined**" sandbox scenario is not that. It still returns the 16-17 range via DeclaredAgeRange, so the plugin reports `supervised`. The "declined" there is a PermissionKit guardian-permission response, a separate Apple framework this plugin does not wrap. DeclaredAgeRange has no "denied" state, so a guardian decline surfaces as the user's real age range (`supervised`), not a distinct denied status. A revoked consent never reaches the plugin either: Apple stops the app from launching and notifies your server with `RESCIND_CONSENT` ([Apple's age assurance Q&A](https://developer.apple.com/support/age-assurance/)). If you need the guardian approve/deny signal itself, use PermissionKit plus App Store Server Notifications.
 
 Apple's guide: [Testing age assurance in sandbox](https://developer.apple.com/documentation/storekit/testing-age-assurance-in-sandbox).
 
@@ -665,7 +672,7 @@ Versions before 0.7.0 also misreported "age range sharing not available for this
 
 ### API_NOT_AVAILABLE (Android)
 
-The API isn't available on the device or in this region. Check that Google Play Services is installed and up to date, that the device has an active internet connection, and that the user is in a region where the law is in effect (see [Regulatory Status](#regulatory-status)).
+Play reports this when the installed Play Store is too old for the API; ask the user to update it. The plugin also maps Play's `APP_NOT_OWNED` here, which means the app wasn't installed from Google Play. Sideloaded debug builds hit this unless the device's Google account is a license tester (see [Android Testing](#android-testing)).
 
 ### PRESENTATION_CONTEXT_UNAVAILABLE (Android)
 
@@ -673,7 +680,7 @@ The API isn't available on the device or in this region. Check that Google Play 
 
 ### Play's prompt never appears (Android)
 
-The prompt is only shown to unsupervised users whose Play setting is "Ask before sharing". "Always share" and "Never share" resolve silently, parents manage sharing for supervised users through Family Link, and in mandatory-verification regions unverified users get `verificationRequired` instead of a prompt. After repeated dismissals Play also stops showing the prompt and keeps answering `notShared`.
+The prompt is only shown to unsupervised users whose Play setting is "Ask before sharing". "Always Share" and "Never Share" resolve without a prompt, parents manage sharing for supervised users in Family Link, and in US states that require verified ages, unverified users get `verificationRequired` instead of a prompt. If the user dismisses or declines it, Play shows it a few more times and then suppresses it for a while, answering `notShared` in the meantime. Users can also switch sharing on or off for your app with the "Share age range" option on its Play Store details page.
 
 ### checkAgeSignals() hangs (iOS, before 0.6.0)
 
