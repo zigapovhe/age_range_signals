@@ -38,7 +38,7 @@ Errors all extend `AgeSignalsException`, which carries `code` and a `details` st
 
 ## Docs
 
-- [README](https://github.com/zigapovhe/age_range_signals/blob/main/README.md): platform setup, full usage examples, testing, limitations, troubleshooting, and legal compliance
+- [README](https://github.com/zigapovhe/age_range_signals/blob/main/README.md): platform setup, full usage examples, testing, troubleshooting, and legal compliance
 - [API reference](https://pub.dev/documentation/age_range_signals/latest/): generated dartdoc for every public symbol
 - [CHANGELOG](https://github.com/zigapovhe/age_range_signals/blob/main/CHANGELOG.md): version-specific behavior, including the 0.8.0 breaking changes and bugs fixed in 0.6.x
 
