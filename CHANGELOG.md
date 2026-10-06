@@ -1,3 +1,9 @@
+## 0.10.1
+
+* **Docs**: Improved and shortened the README.
+* **iOS**: Users under your lowest age gate now come back `supervised` instead of `unknown`.
+* **iOS**: The new iOS 27 errors map to typed exceptions (needs Xcode 27).
+
 ## 0.10.0
 
 * **iOS**: Added `isEligibleForAgeFeatures()` (iOS 26.2+), an opt-in wrapper for Apple's region check and the first step in [Apple's documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features). It is an optional pre-check you call yourself; nothing calls it automatically. Example in the README's Regional Eligibility section. Throws `UnsupportedPlatformException` below iOS 26.2, on pre-26.2 SDKs and on Android. Thanks [@danielwilliamson](https://github.com/danielwilliamson) for the PR ([#36](https://github.com/zigapovhe/age_range_signals/pull/36)).
