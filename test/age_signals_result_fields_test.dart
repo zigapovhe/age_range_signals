@@ -166,6 +166,46 @@ void main() {
     });
   });
 
+  group('AgeSignalsMockData mandatorySharing', () {
+    test('toMap emits mandatorySharing', () {
+      const mock = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+        mandatorySharing: false,
+      );
+      const unset = AgeSignalsMockData(status: AgeSignalsStatus.verified);
+
+      expect(mock.toMap()['mandatorySharing'], false);
+      // Null reaches Kotlin, which reads it as mandatory.
+      expect(unset.toMap().containsKey('mandatorySharing'), isTrue);
+      expect(unset.toMap()['mandatorySharing'], isNull);
+    });
+
+    test('copyWith keeps mandatorySharing', () {
+      const mock = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+        mandatorySharing: false,
+      );
+
+      expect(mock.copyWith(ageLower: 18).mandatorySharing, false);
+      expect(mock.copyWith(mandatorySharing: true).mandatorySharing, true);
+    });
+
+    test('equality includes mandatorySharing', () {
+      const a = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+        mandatorySharing: false,
+      );
+      const b = AgeSignalsMockData(
+        status: AgeSignalsStatus.verified,
+        mandatorySharing: true,
+      );
+
+      expect(a == b, isFalse);
+      expect(a.hashCode == b.hashCode, isFalse);
+      expect(a.toString(), contains('mandatorySharing: false'));
+    });
+  });
+
   group('AgeSignalsAccessStatus', () {
     test('fromName parses every value and falls back to unknown', () {
       expect(
