@@ -1,3 +1,10 @@
+## 0.11.0
+
+* **Docs**: Updated for Play's worldwide rollout and the January 2027 California and Brazil deadlines.
+* **Android**: Updated `com.google.android.play:age-signals` to 0.0.6, which can show Play's sharing prompt anywhere. `isEligibleForAgeFeatures()` and `getRequiredRegulatoryFeatures()` now answer from its mandatory-sharing check; mock it with `AgeSignalsMockData.mandatorySharing`.
+* **Android**: The plugin no longer triggers Flutter's Kotlin Gradle plugin warning on AGP 9 ([#38](https://github.com/zigapovhe/age_range_signals/issues/38)).
+* **Breaking**: Requires Flutter 3.47 / Dart 3.13. On Android the two calls above can now throw (e.g. `ApiNotAvailableException` without Play), and Play's new `DEVICE_NOT_SUPPORTED` maps to `ApiNotAvailableException`.
+
 ## 0.10.1
 
 * **Docs**: Improved and shortened the README.
