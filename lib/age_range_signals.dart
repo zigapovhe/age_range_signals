@@ -198,7 +198,10 @@ class AgeRangeSignals {
   ///   obligated = yourOwnRegionalFallback();
   /// }
   /// if (obligated) {
-  ///   final result = await AgeRangeSignals.instance.checkAgeSignals();
+  ///   final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+  ///   if (access == AgeSignalsAccessStatus.shared) {
+  ///     final result = await AgeRangeSignals.instance.checkAgeSignals();
+  ///   }
   /// }
   /// ```
   ///
