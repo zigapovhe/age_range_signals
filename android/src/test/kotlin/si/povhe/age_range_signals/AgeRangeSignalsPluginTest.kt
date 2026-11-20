@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import com.google.android.play.agesignals.AgeSignalsException
 import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsStatus
+import com.google.android.play.agesignals.model.ApplicableAgeFeature
 import com.google.android.play.agesignals.model.SignificantChangeStatus
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
@@ -36,6 +37,76 @@ internal class AgeRangeSignalsPluginTest {
         assertEquals(
             "API_NOT_AVAILABLE",
             AgeRangeSignalsPlugin().channelErrorCode(AgeSignalsException(-11)),
+        )
+    }
+
+    // --- Applicable age features (Play 0.0.6) ---
+
+    @Test
+    fun buildMockApplicableFeaturesResult_noMockData_isMandatory() {
+        // Mocked flows default to a user Play must share for, the same way
+        // accessStatus defaults to shared, so eligibility-gated code runs.
+        assertEquals(
+            setOf(ApplicableAgeFeature.MANDATORY_SHARING),
+            AgeRangeSignalsPlugin().buildMockApplicableFeaturesResult(null).features(),
+        )
+    }
+
+    @Test
+    fun buildMockApplicableFeaturesResult_mandatorySharingFalse_isEmpty() {
+        val result = AgeRangeSignalsPlugin().buildMockApplicableFeaturesResult(
+            mapOf("mandatorySharing" to false),
+        )
+
+        assertEquals(emptySet<Int>(), result.features())
+    }
+
+    @Test
+    fun regulatoryFeatureNames_mandatorySharing_isDeclaredAgeRangeRequired() {
+        assertEquals(
+            listOf("declaredAgeRangeRequired"),
+            AgeRangeSignalsPlugin().regulatoryFeatureNames(
+                setOf(ApplicableAgeFeature.MANDATORY_SHARING),
+            ),
+        )
+    }
+
+    @Test
+    fun regulatoryFeatureNames_dropsUnknownFeatures() {
+        // A feature added in a later Play release must not be misreported as
+        // one the plugin knows.
+        assertEquals(
+            emptyList<String>(),
+            AgeRangeSignalsPlugin().regulatoryFeatureNames(setOf(2, 99)),
+        )
+    }
+
+    @Test
+    fun isEligibleForAgeFeatures_noManager_reportsApiNotAvailable() {
+        // No engine and no activity: the check needs neither an activity nor
+        // a prompt, so the only failure left is the missing Play API.
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        AgeRangeSignalsPlugin().onMethodCall(MethodCall("isEligibleForAgeFeatures", null), mockResult)
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("API_NOT_AVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
+    }
+
+    @Test
+    fun getRequiredRegulatoryFeatures_noManager_reportsApiNotAvailable() {
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        AgeRangeSignalsPlugin().onMethodCall(
+            MethodCall("getRequiredRegulatoryFeatures", null),
+            mockResult,
+        )
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("API_NOT_AVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
         )
     }
 

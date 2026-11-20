@@ -10,8 +10,11 @@ import com.google.android.play.agesignals.AgeSignalsManagerFactory
 import com.google.android.play.agesignals.AgeSignalsRequest
 import com.google.android.play.agesignals.AgeSignalsException
 import com.google.android.play.agesignals.AgeSignalsResult
+import com.google.android.play.agesignals.ApplicableAgeFeaturesRequest
+import com.google.android.play.agesignals.ApplicableAgeFeaturesResult
 import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsStatus
+import com.google.android.play.agesignals.model.ApplicableAgeFeature
 import com.google.android.play.agesignals.model.SignificantChangeStatus
 import com.google.android.play.agesignals.testing.FakeAgeSignalsManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -53,6 +56,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val fakeManager = FakeAgeSignalsManager()
         fakeManager.setNextAgeSignalsResult(buildMockResult(mockData))
         fakeManager.setNextAgeSignalsAccessResult(buildMockAccessResult(mockData))
+        fakeManager.setNextApplicableAgeFeaturesResult(buildMockApplicableFeaturesResult(mockData))
         return fakeManager
     }
 
@@ -168,6 +172,25 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val status = accessStatusFromName(mockDataMap?.get("accessStatus") as? String)
         return AgeSignalsAccessResult.builder().setAgeSignalsStatus(status).build()
     }
+
+    /**
+     * Builds the [ApplicableAgeFeaturesResult] the fake manager answers
+     * getApplicableAgeFeatures with. An omitted `mandatorySharing` means a
+     * user Play must share for, matching the SHARED access default, so
+     * eligibility-gated mock flows proceed.
+     */
+    internal fun buildMockApplicableFeaturesResult(
+        mockDataMap: Map<String, Any?>?
+    ): ApplicableAgeFeaturesResult {
+        val mandatory = mockDataMap?.get("mandatorySharing") as? Boolean ?: true
+        val features =
+            if (mandatory) setOf(ApplicableAgeFeature.MANDATORY_SHARING) else emptySet()
+        return ApplicableAgeFeaturesResult.builder().setFeatures(features).build()
+    }
+
+    /** Channel names for the Play features the plugin knows; others are dropped. */
+    internal fun regulatoryFeatureNames(features: Set<Int>): List<String> =
+        features.mapNotNull { REGULATORY_FEATURE_NAMES[it] }
 
     /**
      * Derives the cross-platform status.
@@ -300,19 +323,17 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "checkAgeSignals" -> {
                 checkAgeSignals(result)
             }
+            // Play answers both from one call: a user it must share for is
+            // eligible, and that obligation is the one regulatory feature.
             "isEligibleForAgeFeatures" -> {
-                // Apple-only concept; Play limits itself to covered regions implicitly.
-                result.error(
-                    "UNSUPPORTED_PLATFORM",
-                    "Age features eligibility is an iOS 26.2+ DeclaredAgeRange property; Android has no equivalent",
-                    null
-                )
+                fetchApplicableAgeFeatures(result) {
+                    result.success(ApplicableAgeFeature.MANDATORY_SHARING in it)
+                }
             }
             "getRequiredRegulatoryFeatures" -> {
-                // Apple-only concept. Play Age Signals has no regulatory
-                // feature flags; it limits itself to covered regions
-                // implicitly, so there is never anything to report here.
-                result.success(emptyList<String>())
+                fetchApplicableAgeFeatures(result) {
+                    result.success(regulatoryFeatureNames(it))
+                }
             }
             "showSignificantUpdateAcknowledgment" -> {
                 result.error(
@@ -362,6 +383,32 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.error(
                     channelErrorCode(exception),
                     exception.message ?: "An error occurred while requesting age signals access",
+                    "Exception type: ${exception.javaClass.simpleName}"
+                )
+            }
+    }
+
+    private fun fetchApplicableAgeFeatures(result: Result, onFeatures: (Set<Int>) -> Unit) {
+        // No activity needed: this check never shows UI. Like the other
+        // calls, an explicit mock request runs even without the real API.
+        val manager = if (useFakeManager) createFakeManager() else ageSignalsManager
+        if (manager == null) {
+            result.error(
+                "API_NOT_AVAILABLE",
+                "Age Signals API is not available on this device",
+                null
+            )
+            return
+        }
+
+        manager.getApplicableAgeFeatures(ApplicableAgeFeaturesRequest.builder().build())
+            .addOnSuccessListener { featuresResult ->
+                onFeatures(featuresResult.features())
+            }
+            .addOnFailureListener { exception ->
+                result.error(
+                    channelErrorCode(exception),
+                    exception.message ?: "An error occurred while checking applicable age features",
                     "Exception type: ${exception.javaClass.simpleName}"
                 )
             }
@@ -513,6 +560,12 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "unknown" to AgeSignalsStatus.UNSPECIFIED,
         )
         val ACCESS_STATUS_NAMES = ACCESS_STATUSES.entries.associate { it.value to it.key }
+
+        // Mandatory sharing is Play's counterpart of Apple's
+        // declaredAgeRange requirement, so it reuses that channel name.
+        val REGULATORY_FEATURE_NAMES = mapOf(
+            ApplicableAgeFeature.MANDATORY_SHARING to "declaredAgeRangeRequired",
+        )
 
         /** Lower bound of Google Play's open-ended adult band. */
         const val DEFAULT_ADULT_AGE = 18
