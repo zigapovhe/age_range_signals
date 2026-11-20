@@ -427,9 +427,10 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      * Maps a Play library failure onto the channel's error codes; the numeric
      * values are the library's AgeSignalsErrorCode constants. A declined
      * sharing prompt is not a failure - it arrives as a notShared access
-     * result, never through this path.
+     * result, never through this path. DEVICE_NOT_SUPPORTED (-11, a device
+     * type Play doesn't serve) is reported like a missing API.
      */
-    private fun channelErrorCode(exception: Exception): String {
+    internal fun channelErrorCode(exception: Exception): String {
         if (exception !is AgeSignalsException) return "API_ERROR"
         return when (exception.errorCode) {
             -1 -> "API_NOT_AVAILABLE"
@@ -442,6 +443,7 @@ class AgeRangeSignalsPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             -8 -> "API_ERROR"
             -9 -> "API_NOT_AVAILABLE"
             -10 -> "SDK_VERSION_OUTDATED"
+            -11 -> "API_NOT_AVAILABLE"
             -100 -> "API_ERROR"
             else -> "API_ERROR"
         }

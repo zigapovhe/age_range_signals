@@ -3,6 +3,7 @@ package si.povhe.age_range_signals
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import com.google.android.play.agesignals.AgeSignalsException
 import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsStatus
 import com.google.android.play.agesignals.model.SignificantChangeStatus
@@ -26,6 +27,16 @@ internal class AgeRangeSignalsPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         Mockito.verify(mockResult).success(null)
+    }
+
+    @Test
+    fun channelErrorCode_deviceNotSupported_isApiNotAvailable() {
+        // Play 0.0.6 reports device types other than phones, foldables and
+        // tablets as DEVICE_NOT_SUPPORTED (-11); handle it like a missing API.
+        assertEquals(
+            "API_NOT_AVAILABLE",
+            AgeRangeSignalsPlugin().channelErrorCode(AgeSignalsException(-11)),
+        )
     }
 
     // --- Mock data band logic (regression coverage for 0.6.0) ---
