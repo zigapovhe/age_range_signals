@@ -92,7 +92,7 @@ There's nothing to add to Gradle; the plugin depends on `com.google.android.play
 - `minSdk` 23 or higher
 - The Google Play Store and Google Play Services installed and up to date on the device
 - Your app installed from Google Play. Play blocks sideloaded installs unless the device's Google account is a license tester (see [Android Testing](#android-testing))
-- AGP 9 with built-in Kotlin, or AGP 8.x with the Kotlin Gradle plugin 2.0+ on your project's classpath (any recent Flutter template has it)
+- Flutter 3.47 or newer. Works with AGP 9's built-in Kotlin, and with AGP 8 or `android.builtInKotlin=false`, where Flutter applies the Kotlin Gradle plugin itself
 
 The Play Age Signals API is still in beta and only returns real data for users in covered regions (see [Regulatory Status](#regulatory-status)). Use [mock data](#android-testing) to test anywhere else.
 
