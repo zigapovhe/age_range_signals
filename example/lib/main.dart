@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:age_range_signals/age_range_signals.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   runApp(const MyApp());
@@ -169,8 +169,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       stopwatch.stop();
       setState(() {
         _eligibilityOutcome =
-            '$eligible (Apple ${eligible ? 'requires' : 'does not require'} '
-            'age assurance) in ${stopwatch.elapsedMilliseconds} ms';
+            '$eligible (sharing is ${eligible ? 'mandatory' : 'not mandatory'} '
+            'for this user) in ${stopwatch.elapsedMilliseconds} ms';
       });
     } on AgeSignalsException catch (e) {
       stopwatch.stop();
@@ -193,7 +193,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       stopwatch.stop();
       setState(() {
         _regulatoryOutcome = features.isEmpty
-            ? 'Empty set (Apple reports nothing required) '
+            ? 'Empty set (nothing required) '
                   'in ${stopwatch.elapsedMilliseconds} ms'
             : '${features.map((f) => f.name).join(', ')} '
                   'in ${stopwatch.elapsedMilliseconds} ms';
@@ -411,6 +411,13 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                     accessStatus: AgeSignalsAccessStatus.notShared,
                   ),
                 ),
+                _buildScenarioChip(
+                  'Not mandatory region',
+                  const AgeSignalsMockData(
+                    status: AgeSignalsStatus.verified,
+                    mandatorySharing: false,
+                  ),
+                ),
               ],
             ),
           ],
@@ -471,7 +478,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Eligibility & Regulatory Features (iOS 26.2+ / 26.4+)',
+              'Eligibility & Regulatory Features',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
