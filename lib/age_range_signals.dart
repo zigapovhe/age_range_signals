@@ -220,7 +220,7 @@ class AgeRangeSignals {
   /// regulated region have been seen flipping to `false` with no account
   /// change, so keep a caller-side fallback where a law applies to you
   /// regardless. Throws [ApiNotAvailableException] when the store reports
-  /// the service unavailable (on Android: an app not installed from Google
+  /// the service unavailable (on Android: possibly an app not from Google
   /// Play, or an unsupported device type), [PlayServicesException] on Android
   /// when the Play Store is missing or older than this check needs (it needs
   /// a newer one than [checkAgeSignals]), and other [AgeSignalsException]

@@ -50,7 +50,7 @@ That's the core flow. `status` is the age verdict measured against your highest 
 
 ## Features
 
-- ✅ Google Play Age Signals API on Android (API 23+), including Play's age sharing prompt
+- ✅ Google Play Age Signals API on Android (API 24+), including Play's age sharing prompt
 - ✅ Apple DeclaredAgeRange API on iOS 26.0+
 - ✅ One `status` that means the same thing on both platforms, measured against your own age gates
 - ✅ Regional eligibility check: Apple's on iOS 26.2+, Play's mandatory-sharing check on Android
@@ -63,18 +63,18 @@ That's the core flow. `status` is the age verdict measured against your highest 
 
 | Platform | Minimum app version | API available from | API |
 |----------|---------------------|--------------------|-----|
-| Android  | API 23 (Android 6.0) | API 23 | Google Play Age Signals |
+| Android  | API 24 (Android 7.0) | API 24 | Google Play Age Signals |
 | iOS      | iOS 13.0 | iOS 26.0 (eligibility 26.2, regulatory features 26.4) | DeclaredAgeRange |
 
 Your iOS app doesn't need a deployment target of 26.0. The plugin checks at runtime and throws `UnsupportedPlatformException` on older iOS versions, and in apps built with an SDK that lacks the API, so you can keep supporting older devices.
 
-On Android, `com.google.android.play:age-signals` declares `minSdkVersion 23`, so your app's `minSdk` (`minSdkVersion` in older projects) must be 23 or higher. Anything lower fails Gradle's manifest merge.
+On Android, `com.google.android.play:age-signals` declares `minSdkVersion 24` since 0.0.6 (Google's docs still say 23), so your app's `minSdk` (`minSdkVersion` in older projects) must be 24 or higher. Anything lower fails Gradle's manifest merge.
 
 ## Regulatory Status
 
 These laws are in flux, but the advice doesn't change: keep the plugin integrated and rely on the runtime signal rather than hard-coding which regions are live. Dates are current as of this release.
 
-> **Google Play now answers everywhere.** Google's November 19, 2026 developer notice takes Play Age Signals worldwide in age-signals 0.0.6, which this plugin uses ([Google docs](https://developer.android.com/distribute/age-appropriate-experiences/regional-protections)). Outside regions with a sharing mandate, users choose whether to share, and anyone whose Play setting is "Ask before sharing" can see the prompt. To skip the prompt where no law requires sharing, see [Regional Eligibility](#regional-eligibility).
+> **Google Play is going worldwide.** With age-signals 0.0.6, which this plugin uses, Google says Play will return responses for all users by December 11, 2026 ([Google docs](https://developer.android.com/google/play/age-signals/overview), [by region](https://developer.android.com/distribute/age-appropriate-experiences/regional-protections)). Outside regions with a sharing mandate, users choose whether to share, and anyone whose Play setting is "Ask before sharing" can see the prompt. To skip the prompt where no law requires sharing, see [Regional Eligibility](#regional-eligibility).
 
 - **Brazil (Lei 15.211, Digital ECA):** Enforceable since March 17, 2026, when Play started returning age signals for Brazilian users. From January 2027, Play makes sharing mandatory for all users in Brazil. On the Apple side, from February 24, 2026 the App Store blocks Brazilian users from downloading 18+ apps unless confirmed adult, and apps declaring loot boxes are automatically rated 18+ on the Brazil storefront. [Law](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/L15211.htm) · [Google docs](https://support.google.com/googleplay/android-developer/answer/6223646?hl=en#digital_eca_requirements) · [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
 - **Australia:** An applicable region for Apple's DeclaredAgeRange API. From February 24, 2026, Apple blocks users in Australia from downloading 18+ apps unless confirmed adult. Separate from the [Social Media Minimum Age Act](https://www.esafety.gov.au/about-us/industry-regulation/social-media-age-restrictions) (in effect December 10, 2025), and from App Store content *ratings*, which this plugin does not handle. eSafety's [Age-Restricted Material Codes](https://www.esafety.gov.au/industry/codes/register-online-industry-codes-standards) separately require every app store to check age before an 18+ download; that store-level check is required from September 9, 2026 and, like content ratings, sits outside this plugin. [Apple News](https://developer.apple.com/news/?id=f5zj08ey)
@@ -91,12 +91,12 @@ These laws are in flux, but the advice doesn't change: keep the plugin integrate
 
 There's nothing to add to Gradle; the plugin depends on `com.google.android.play:age-signals` 0.0.6 itself. You need:
 
-- `minSdk` 23 or higher
+- `minSdk` 24 or higher
 - The Google Play Store and Google Play Services installed and up to date on the device
 - Your app installed from Google Play. Play blocks sideloaded installs unless the device's Google account is a license tester (see [Android Testing](#android-testing))
-- Flutter 3.47 or newer. Works with AGP 9's built-in Kotlin, and with AGP 8 or `android.builtInKotlin=false`, where Flutter applies the Kotlin Gradle plugin itself
+- Flutter 3.47 or newer. Works with AGP 9's built-in Kotlin, and with `android.builtInKotlin=false` or AGP 8, where Flutter applies the Kotlin Gradle plugin itself (Flutter 3.50 needs AGP 9.1.1 or newer)
 
-The Play Age Signals API is still in beta. Since age-signals 0.0.6 it answers worldwide: outside regions where a law makes sharing mandatory, users choose whether to share (see [Regulatory Status](#regulatory-status) and [Regional Eligibility](#regional-eligibility)). Use [mock data](#android-testing) to test scenarios you can't reach with a real account.
+The Play Age Signals API is still in beta. With age-signals 0.0.6 it is going worldwide by December 11, 2026: outside regions where a law makes sharing mandatory, users choose whether to share (see [Regulatory Status](#regulatory-status) and [Regional Eligibility](#regional-eligibility)). Use [mock data](#android-testing) to test scenarios you can't reach with a real account.
 
 ### iOS
 
@@ -145,7 +145,7 @@ Play ignores them. It reports its default bands, 0-12, 13-15, 16-17 and 18+, unl
 
 `status` is the verdict and follows the same rule on both platforms: `verified` when the reported range starts at or above your highest gate, `supervised` when it falls below. It says nothing about whether a parent manages the account; on Android that's `ageRangeSource == AgeRangeSource.tierB`.
 
-How the age was established is a separate field: `ageRangeSource` (Play's tier) on Android, `source` (the declaration type) on iOS. Any tier can reach `verified`, and a tier is never the verdict on its own: `tierD` means an ID was checked, and that ID can read 12. A self-declared age is whatever the user entered, and nothing here can detect a falsified birthdate. Use these fields to set the minimum assurance you'll accept, as in [18+ Only App](#18-only-app).
+How the age was established is a separate field: `ageRangeSource` (Play's tier) on Android, `source` (the declaration type) on iOS. Any tier can reach `verified`, and a tier is never the verdict on its own: `tierD` means an ID was checked, and that ID can read 12. A self-declared age is whatever the user entered, and nothing here can detect a falsified birthdate. Neither store says which one your app has to require; see [18+ Only App](#18-only-app).
 
 With the default bands, a gate that doesn't sit on a band edge effectively moves up to the next edge on Android. With a gate at 15, a 15-year-old is `verified` on iOS (Apple's range starts at 15) but lands in Play's 13-15 band and reads `supervised` on Android. Gates on band edges (13, 16, 18), or custom Play ages that match your iOS gates, keep the two platforms in agreement.
 
@@ -367,37 +367,49 @@ if (features
 }
 ```
 
-An empty set means none of the known `AgeRegulatoryFeature` values apply. That isn't clearance on its own on iOS; check [eligibility](#regional-eligibility) too. On Android the set holds `declaredAgeRangeRequired` exactly when `isEligibleForAgeFeatures()` returns `true`, since both read the same Play check, and the two significant-change values are iOS only. Below iOS 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement can't be checked. Catch it and keep your own regional logic for those devices.
+An empty set means none of the known `AgeRegulatoryFeature` values apply. That isn't clearance on its own on iOS; check [eligibility](#regional-eligibility) too. On Android the set holds `declaredAgeRangeRequired` exactly when `isEligibleForAgeFeatures()` returns `true`, since both read the same Play check, and the two significant-change values are iOS only. Below iOS 26.4, and in apps built with a pre-26.4 SDK, the call throws `UnsupportedPlatformException` because the requirement can't be checked. On Android it throws the same exceptions as `isEligibleForAgeFeatures()`. Catch `AgeSignalsException` and keep your own regional logic for those devices.
 
 ### 18+ Only App
 
-Use a single gate at 18. `verified` then says the range clears 18, but a self-declaration can get there too, so a strictly 18+ app should decide which assurance it accepts rather than leave it implicit. Android reports Play's tier; iOS reports the declaration type, where `confirmed` means Apple checked a payment card, ID or similar (iOS 26.2+; older releases report `null`).
+Use a single gate at 18 and check the lower bound, as [Google's](https://developer.android.com/google/play/age-signals/request-age-signals) and [Apple's](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app) guides do.
 
 ```dart
-import 'dart:io';
 import 'package:age_range_signals/age_range_signals.dart';
 
 await AgeRangeSignals.instance.initialize(ageGates: [18]);
 
-final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
-if (access != AgeSignalsAccessStatus.shared) {
-  // Block. On verificationRequired, point the user at the Play Store.
-  return;
-}
+try {
+  final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+  if (access == AgeSignalsAccessStatus.verificationRequired) {
+    // Android: ask the user to visit the Play Store to resolve their status.
+    return;
+  }
+  if (access != AgeSignalsAccessStatus.shared) {
+    // The user isn't sharing their age.
+    return;
+  }
 
-final result = await AgeRangeSignals.instance.checkAgeSignals();
+  final result = await AgeRangeSignals.instance.checkAgeSignals();
+  final ageLower = result.ageLower;
 
-const acceptableTiers = {AgeRangeSource.tierC, AgeRangeSource.tierD};
-final assuranceOk = Platform.isIOS
-    ? result.source == AgeDeclarationSource.confirmed
-    : acceptableTiers.contains(result.ageRangeSource);
-
-if (result.status == AgeSignalsStatus.verified && assuranceOk) {
-  // 18+ at an assurance level you accept.
-} else {
-  // Block or explain why.
+  if (ageLower == null) {
+    // The user isn't sharing their age.
+  } else if (ageLower >= 18) {
+    // 18 or over.
+  } else {
+    // Under 18.
+  }
+} on AgeSignalsException {
+  // Handle the error. See Exceptions.
 }
 ```
+
+- **Don't require `tierC` or `tierD`.** Play only returns them where age verification is mandatory, such as Texas, and there it returns `verificationRequired` until the user is verified or supervised. Everywhere else an adult who shares [comes back as `tierA`](https://developer.android.com/google/play/age-signals/understand-age-signals-responses), even a verified one.
+- **iOS reports the declaration method in `source`.** Apple says to apply controls that fit it and doesn't require a particular one.
+- **Custom ages in Play Console need to include 18.** With 13 and 17, for example, everyone 17 and over gets `ageLower: 17`.
+- **[Restrict Minor Access](https://support.google.com/googleplay/android-developer/answer/9867159?hl=en)** in Play Console keeps users Google has determined to be minors from finding or installing an adults-only app. Google [requires it](https://support.google.com/googleplay/android-developer/answer/16302250?hl=en) for apps built around real-money gambling, dating, random chat or anonymous chat.
+
+Both stores leave compliance with the law to you.
 
 ### Generally Available App (No Age Restrictions)
 
@@ -433,8 +445,8 @@ Use the singleton `AgeRangeSignals.instance`.
 - `Future<void> initialize({List<int>? ageGates, bool useMockData = false, AgeSignalsMockData? mockData})`: sets your age gates (see [Age gates and status](#age-gates-and-status)). `useMockData` and `mockData` are Android only and ignored on iOS; see [Android Testing](#android-testing).
 - `Future<AgeSignalsAccessStatus> requestAgeSignalsAccess()`: asks for access to the user's age signals. Call it first and continue only on `shared` (see [Two calls](#two-calls)).
 - `Future<AgeSignalsResult> checkAgeSignals()`: reads the age signals.
-- `Future<bool> isEligibleForAgeFeatures()`: whether the user is subject to age assurance. Apple's check on iOS 26.2+, Play's mandatory-sharing check on Android. Throws `UnsupportedPlatformException` below iOS 26.2 and in apps built with Xcode older than 26.2. See [Regional Eligibility](#regional-eligibility).
-- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()`: which regulatory actions the store requires for the user (iOS 26.4+ and Android; Android only reports `declaredAgeRangeRequired`). Throws `UnsupportedPlatformException` below iOS 26.4 and in apps built with Xcode older than 26.4. See [Regulatory Features](#regulatory-features).
+- `Future<bool> isEligibleForAgeFeatures()`: whether the user is subject to age assurance. Apple's check on iOS 26.2+, Play's mandatory-sharing check on Android. Throws `UnsupportedPlatformException` below iOS 26.2 and in apps built with Xcode older than 26.2, and `PlayServicesException` or `ApiNotAvailableException` on Android when Play can't answer. See [Regional Eligibility](#regional-eligibility).
+- `Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures()`: which regulatory actions the store requires for the user (iOS 26.4+ and Android; Android only reports `declaredAgeRangeRequired`). Throws `UnsupportedPlatformException` below iOS 26.4 and in apps built with Xcode older than 26.4, and on Android the same exceptions as `isEligibleForAgeFeatures()`. See [Regulatory Features](#regulatory-features).
 - `Future<void> showSignificantUpdateAcknowledgment({required String updateDescription})`: shows Apple's sheet for acknowledging a significant app change (iOS 26.4+). Returning normally means the person acknowledged it. Every other outcome throws:
     - `UnsupportedPlatformException` on Android, below iOS 26.4 and in apps built with Xcode older than 26.4, rather than silently succeeding, so your compliance flow can't be fooled by a no-op
     - `ApiNotAvailableException` when Apple reports the sheet unavailable. Apple documents no separate error for a dismissed sheet and elsewhere reports a person's refusal the same way, so don't treat this as proof the sheet never appeared
@@ -505,10 +517,10 @@ Returned by `requestAgeSignalsAccess()`:
 
 How Google Play established the age range (Android only). The tier names and descriptions are Google's:
 
-- `tierA`: the user self-declared their age
+- `tierA`: the user gave their age to Google, which may or may not have confirmed it
 - `tierB`: the age is managed by a parent or guardian
-- `tierC`: the age is assessed using a credit card, email address, selfie assessment, government ID, or tax ID
-- `tierD`: the age is checked using a government ID plus selfie assessment, or a Digital ID
+- `tierC`: the age is assessed using a credit card, email address, selfie assessment, government ID, or tax ID. Only returned where age verification is mandatory
+- `tierD`: the age is checked using a government ID plus selfie assessment, or a Digital ID. Only returned where age verification is mandatory
 
 ### SignificantChangeStatus
 
@@ -633,11 +645,11 @@ Swap the `mockData` argument for any of these:
 | Parent denied the change | `status: supervisedApprovalDenied, ageLower: 13, ageUpper: 15` | `supervisedApprovalDenied`, change status `declined` |
 | No signals at all | `status: unknown` | `unknown`, no band, no tier |
 | Sharing declined | `status: unknown, accessStatus: AgeSignalsAccessStatus.notShared, mandatorySharing: false` | `requestAgeSignalsAccess()` returns `notShared`; `checkAgeSignals()` reports `unknown`. Users can only decline where sharing isn't mandatory |
-| Not a mandatory region | `status: verified, mandatorySharing: false` | `isEligibleForAgeFeatures()` returns `false`; the regulatory set is empty |
+| Not a mandatory region | `status: verified, ageRangeSource: AgeRangeSource.tierA, ageLower: 18, mandatorySharing: false` | `isEligibleForAgeFeatures()` returns `false`; the regulatory set is empty |
 
 Bands the mock fills in for you are real Play bands (0-12, 13-15, 16-17), with one exception: because the verdict is derived from the band, a verified mock defaults to an open-ended band starting at your highest gate (18 until you supply gates), with `ageUpper: null`. A real verified response reports Play's 18+ band (`ageLower: 18, ageUpper: null`), so pass `ageLower: 18` to mirror it exactly.
 
-To hit the real API from a sideloaded debug build, add the device's Google account as a license tester in Play Console. Otherwise Play blocks apps that weren't installed from Google Play with `APP_NOT_OWNED`, which the plugin reports as `ApiNotAvailableException`. The package name has to match the app configured in Play Console, and the app needs a release on a test or production track that the account can receive ([Google's guide](https://developer.android.com/google/play/age-signals/test-age-signals-api)). If a sideloaded build still gets `APP_NOT_OWNED`, install it from the internal testing track instead.
+To hit the real API from a sideloaded debug build, add the device's Google account as a license tester in Play Console. Otherwise Play blocks apps that weren't installed from Google Play with `APP_NOT_OWNED`, which the plugin reports as `ApiNotAvailableException`. The package name has to match the app configured in Play Console ([Google's guide](https://developer.android.com/google/play/age-signals/test-age-signals-api)). If a sideloaded build still gets `APP_NOT_OWNED`, install it from the internal testing track instead.
 
 ### iOS Testing
 
@@ -719,7 +731,7 @@ On Android, skipping the access call means `checkAgeSignals()` reports `unknown`
 
 On iOS nothing changes in behaviour, with one catch: `requestAgeSignalsAccess()` throws `UnsupportedPlatformException` below iOS 26.0 and `NotInitializedException` without gates, so the errors you used to catch around `checkAgeSignals()` can now come from the first call. If your `try` only wrapped `checkAgeSignals()`, widen it to cover both calls.
 
-Every other breaking change lists its migration step in the [CHANGELOG](CHANGELOG.md). Two notes for older versions: the `mostRecentApprovalDate` rename only affects 0.7.x, since the field arrived in 0.7.0, and coming from 0.5.x or earlier also needs `minSdk` 23.
+Every other breaking change lists its migration step in the [CHANGELOG](CHANGELOG.md). Two notes for older versions: the `mostRecentApprovalDate` rename only affects 0.7.x, since the field arrived in 0.7.0, and coming from 0.10.x or earlier also needs `minSdk` 24.
 
 ## Example App
 

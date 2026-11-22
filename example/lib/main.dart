@@ -80,6 +80,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _result = null;
       _error = null;
       _accessOutcome = null;
+      _eligibilityOutcome = null;
+      _regulatoryOutcome = null;
     });
     await _initializePlugin(mockData: mockData);
   }
@@ -107,6 +109,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _result = null;
       _error = null;
       _accessOutcome = null;
+      _eligibilityOutcome = null;
+      _regulatoryOutcome = null;
       _currentScenario = 'Default (Supervised 13-15)';
     });
     await _initializePlugin();
@@ -416,6 +420,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   'Not mandatory region',
                   const AgeSignalsMockData(
                     status: AgeSignalsStatus.verified,
+                    ageRangeSource: AgeRangeSource.tierA,
+                    ageLower: 18,
                     mandatorySharing: false,
                   ),
                 ),
@@ -720,7 +726,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   String _getAgeRangeSourceText(AgeRangeSource source) {
     switch (source) {
       case AgeRangeSource.tierA:
-        return 'Tier A (self-declared)';
+        return 'Tier A (self-declared or shared voluntarily)';
       case AgeRangeSource.tierB:
         return 'Tier B (parent-managed account)';
       case AgeRangeSource.tierC:

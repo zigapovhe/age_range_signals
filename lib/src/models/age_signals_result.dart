@@ -350,7 +350,8 @@ enum AgeDeclarationSource {
 /// the exact verification methods behind each tier are defined by the Play
 /// Age Signals documentation and may evolve.
 enum AgeRangeSource {
-  /// The user self-declared their age through Google Play.
+  /// The user gave their age to Google, which may or may not have confirmed
+  /// it. Adults who share voluntarily report this tier even when verified.
   tierA,
 
   /// The age range comes from a parent- or guardian-managed account.
@@ -365,9 +366,13 @@ enum AgeRangeSource {
   tierB,
 
   /// Verified via credit card, email, selfie, government ID, or tax ID.
+  ///
+  /// Only returned where age verification is mandatory.
   tierC,
 
   /// Verified via government ID plus selfie, or a Digital ID.
+  ///
+  /// Only returned where age verification is mandatory.
   tierD;
 
   /// Parses a source name coming over the platform channel.

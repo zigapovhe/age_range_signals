@@ -82,6 +82,9 @@ void main() {
       }
 
       // The mock pins the wiring both ways.
+      addTearDown(
+        () => AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]),
+      );
       await AgeRangeSignals.instance.initialize(useMockData: true);
       expect(await AgeRangeSignals.instance.isEligibleForAgeFeatures(), isTrue);
       await AgeRangeSignals.instance.initialize(
@@ -95,7 +98,6 @@ void main() {
         await AgeRangeSignals.instance.isEligibleForAgeFeatures(),
         isFalse,
       );
-      await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
       return;
     }
 
@@ -129,6 +131,9 @@ void main() {
         expect(e, isNot(isA<UnsupportedPlatformException>()));
       }
 
+      addTearDown(
+        () => AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]),
+      );
       await AgeRangeSignals.instance.initialize(useMockData: true);
       expect(await AgeRangeSignals.instance.getRequiredRegulatoryFeatures(), {
         AgeRegulatoryFeature.declaredAgeRangeRequired,
@@ -144,7 +149,6 @@ void main() {
         await AgeRangeSignals.instance.getRequiredRegulatoryFeatures(),
         isEmpty,
       );
-      await AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]);
       return;
     }
 
