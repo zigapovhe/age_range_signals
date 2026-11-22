@@ -409,6 +409,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   const AgeSignalsMockData(
                     status: AgeSignalsStatus.unknown,
                     accessStatus: AgeSignalsAccessStatus.notShared,
+                    mandatorySharing: false,
                   ),
                 ),
                 _buildScenarioChip(

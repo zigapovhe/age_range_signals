@@ -40,6 +40,18 @@ internal class AgeRangeSignalsPluginTest {
         )
     }
 
+    @Test
+    fun channelErrorCode_missingOrOldPlayStore_isPlayServicesError() {
+        // Without the Play Store the manager still exists and every call fails
+        // with PLAY_STORE_NOT_FOUND (-2). getApplicableAgeFeatures needs a
+        // newer Play Store than the other calls, below which it fails with
+        // PLAY_STORE_VERSION_OUTDATED (-6). Both are documented as
+        // PlayServicesException.
+        val plugin = AgeRangeSignalsPlugin()
+        assertEquals("PLAY_SERVICES_ERROR", plugin.channelErrorCode(AgeSignalsException(-2)))
+        assertEquals("PLAY_SERVICES_ERROR", plugin.channelErrorCode(AgeSignalsException(-6)))
+    }
+
     // --- Applicable age features (Play 0.0.6) ---
 
     @Test
@@ -83,8 +95,9 @@ internal class AgeRangeSignalsPluginTest {
 
     @Test
     fun isEligibleForAgeFeatures_noManager_reportsApiNotAvailable() {
-        // No engine and no activity: the check needs neither an activity nor
-        // a prompt, so the only failure left is the missing Play API.
+        // No engine and no activity. On a device the manager is never null
+        // (a missing Play Store surfaces as -2 instead), so this pins the
+        // defensive branch and that no activity is required.
         val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
         AgeRangeSignalsPlugin().onMethodCall(MethodCall("isEligibleForAgeFeatures", null), mockResult)
 

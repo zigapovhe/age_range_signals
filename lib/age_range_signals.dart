@@ -194,7 +194,8 @@ class AgeRangeSignals {
   /// bool obligated;
   /// try {
   ///   obligated = await AgeRangeSignals.instance.isEligibleForAgeFeatures();
-  /// } on UnsupportedPlatformException {
+  /// } on AgeSignalsException {
+  ///   // Older iOS, or a missing or outdated Play Store on Android.
   ///   obligated = yourOwnRegionalFallback();
   /// }
   /// if (obligated) {
@@ -219,9 +220,11 @@ class AgeRangeSignals {
   /// regulated region have been seen flipping to `false` with no account
   /// change, so keep a caller-side fallback where a law applies to you
   /// regardless. Throws [ApiNotAvailableException] when the store reports
-  /// the service unavailable (on Android also without Play or on an
-  /// unsupported device type) and other [AgeSignalsException] subclasses on
-  /// API errors.
+  /// the service unavailable (on Android: an app not installed from Google
+  /// Play, or an unsupported device type), [PlayServicesException] on Android
+  /// when the Play Store is missing or older than this check needs (it needs
+  /// a newer one than [checkAgeSignals]), and other [AgeSignalsException]
+  /// subclasses on API errors.
   Future<bool> isEligibleForAgeFeatures() {
     return AgeRangeSignalsPlatform.instance.isEligibleForAgeFeatures();
   }
@@ -245,8 +248,8 @@ class AgeRangeSignals {
   /// Throws [UnsupportedPlatformException] on iOS below 26.4 and in apps
   /// built with an SDK older than iOS 26.4 (Xcode < 26.4), where the
   /// requirement cannot be checked. This keeps the empty set unambiguous;
-  /// keep your own regional logic for those devices. Throws
-  /// [ApiNotAvailableException] on Android without Play, and other
+  /// keep your own regional logic for those devices. On Android it throws
+  /// the same exceptions as [isEligibleForAgeFeatures]. Throws other
   /// [AgeSignalsException] subclasses on API errors.
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
     return AgeRangeSignalsPlatform.instance.getRequiredRegulatoryFeatures();
