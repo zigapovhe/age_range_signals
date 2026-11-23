@@ -1,6 +1,10 @@
+## 0.11.2
+
+* **Docs**: Fixed the links to MIGRATION.md, REGULATORY.md, LICENSE and the example app, which pub.dev showed as plain text.
+
 ## 0.11.1
 
-* **Docs**: Reordered and simplified the README. Migration steps are now in [MIGRATION.md](MIGRATION.md) and regulatory status in [REGULATORY.md](REGULATORY.md).
+* **Docs**: Reordered and simplified the README. Migration steps are now in [MIGRATION.md](https://github.com/zigapovhe/age_range_signals/blob/main/MIGRATION.md) and regulatory status in [REGULATORY.md](https://github.com/zigapovhe/age_range_signals/blob/main/REGULATORY.md).
 
 ## 0.11.0
 

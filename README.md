@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/age_range_signals.svg)](https://pub.dev/packages/age_range_signals)
 [![pub points](https://img.shields.io/pub/points/age_range_signals)](https://pub.dev/packages/age_range_signals/score)
 [![Flutter](https://github.com/zigapovhe/age_range_signals/actions/workflows/flutter.yml/badge.svg)](https://github.com/zigapovhe/age_range_signals/actions/workflows/flutter.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/zigapovhe/age_range_signals/blob/main/LICENSE)
 
 A Flutter plugin for age verification. It uses the Google Play Age Signals API on Android and Apple's DeclaredAgeRange API on iOS 26+.
 
@@ -40,7 +40,7 @@ Call both methods in this order while your app is in the foreground. On Android,
 
 Most apps only need these sections: [Setup](#setup), [What You Get Back](#what-you-get-back), [Regional Eligibility](#regional-eligibility) and [Data Use](#data-use). The rest of this page is reference.
 
-Upgrading from an older version? [MIGRATION.md](MIGRATION.md) lists what to change in your code.
+Upgrading from an older version? [MIGRATION.md](https://github.com/zigapovhe/age_range_signals/blob/main/MIGRATION.md) lists what to change in your code.
 
 ## Table of Contents
 
@@ -49,7 +49,7 @@ Upgrading from an older version? [MIGRATION.md](MIGRATION.md) lists what to chan
 - [What You Get Back](#what-you-get-back)
 - [Regional Eligibility](#regional-eligibility)
 - [Data Use](#data-use)
-- [Migrating from an older version](MIGRATION.md)
+- [Migrating from an older version](https://github.com/zigapovhe/age_range_signals/blob/main/MIGRATION.md)
 - Reference
     - [Regulatory Status](#regulatory-status)
     - [How It Works](#how-it-works)
@@ -571,7 +571,7 @@ The plugin doesn't collect or store any user data. Age data comes straight from 
 
 ## Example App
 
-[`example/lib/main.dart`](example/lib/main.dart) runs on both platforms. It walks through the access request and the check, and handles every status. On Android it has a mock data switch with a list of scenarios. It also has buttons for the eligibility check, regulatory features and the significant update sheet.
+[`example/lib/main.dart`](https://github.com/zigapovhe/age_range_signals/blob/main/example/lib/main.dart) runs on both platforms. It walks through the access request and the check, and handles every status. On Android it has a mock data switch with a list of scenarios. It also has buttons for the eligibility check, regulatory features and the significant update sheet.
 
 ## Contributing
 
@@ -579,7 +579,7 @@ Issues and pull requests are welcome on [GitHub](https://github.com/zigapovhe/ag
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/zigapovhe/age_range_signals/blob/main/LICENSE).
 
 ## References
 
