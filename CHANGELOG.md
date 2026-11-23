@@ -1,3 +1,7 @@
+## 0.11.1
+
+* **Docs**: Reordered and simplified the README. Migration steps for breaking changes are now in [MIGRATION.md](MIGRATION.md).
+
 ## 0.11.0
 
 * **Docs**: Updated for Play's worldwide rollout (all users by December 11, 2026) and the January 2027 California and Brazil deadlines. The 18+ sample now checks the age range, not the tier.
