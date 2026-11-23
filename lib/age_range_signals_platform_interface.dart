@@ -93,8 +93,8 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// 26.2+, and Android via Play's mandatory-sharing check).
   ///
   /// Throws [UnsupportedPlatformException] on iOS below 26.2 and in apps
-  /// built with a pre-26.2 SDK, and on Android [PlayServicesException] or
-  /// [ApiNotAvailableException] when Play can't answer.
+  /// built with a pre-26.2 SDK, and another [AgeSignalsException] when the
+  /// store can't answer.
   Future<bool> isEligibleForAgeFeatures() {
     throw UnimplementedError(
       'isEligibleForAgeFeatures() has not been implemented.',
@@ -106,8 +106,8 @@ abstract class AgeRangeSignalsPlatform extends PlatformInterface {
   /// check).
   ///
   /// Throws [UnsupportedPlatformException] on iOS below 26.4 and in apps
-  /// built with a pre-26.4 SDK. On Android it throws the same exceptions as
-  /// [isEligibleForAgeFeatures].
+  /// built with a pre-26.4 SDK, and another [AgeSignalsException] when the
+  /// store can't answer.
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
     throw UnimplementedError(
       'getRequiredRegulatoryFeatures() has not been implemented.',

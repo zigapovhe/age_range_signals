@@ -40,17 +40,11 @@ export 'src/models/age_regulatory_feature.dart';
 ///
 ///   switch (result.status) {
 ///     case AgeSignalsStatus.verified:
-///       print('User is verified');
-///       break;
+///       print('At or above the highest gate');
 ///     case AgeSignalsStatus.supervised:
-///       print('User is under supervision');
-///       break;
-///     case AgeSignalsStatus.declined:
-///       print('User declined to share age');
-///       break;
-///     case AgeSignalsStatus.unknown:
-///       print('Age information not available');
-///       break;
+///       print('Below the highest gate');
+///     default:
+///       print('No verdict: ${result.status}');
 ///   }
 /// } on AgeSignalsException catch (e) {
 ///   print('Error: $e');
@@ -185,8 +179,8 @@ class AgeRangeSignals {
   /// On Android it is Play's mandatory-sharing check (age-signals 0.0.6):
   /// `true` when a law requires Play to share this user's age.
   ///
-  /// Both stores show their sharing prompt outside those regions too, where
-  /// sharing is voluntary. Neither [requestAgeSignalsAccess] nor
+  /// Both stores can show their sharing prompt outside those regions too,
+  /// where sharing is voluntary. Neither [requestAgeSignalsAccess] nor
   /// [checkAgeSignals] calls this for you; use it to keep the prompt away
   /// from users with no obligation:
   ///
@@ -220,8 +214,8 @@ class AgeRangeSignals {
   /// regulated region have been seen flipping to `false` with no account
   /// change, so keep a caller-side fallback where a law applies to you
   /// regardless. Throws [ApiNotAvailableException] when the store reports
-  /// the service unavailable (on Android: possibly an app not from Google
-  /// Play, or an unsupported device type), [PlayServicesException] on Android
+  /// the service unavailable (on Android: an app not installed from
+  /// Google Play, or an unsupported device type), [PlayServicesException] on Android
   /// when the Play Store is missing or older than this check needs (it needs
   /// a newer one than [checkAgeSignals]), and other [AgeSignalsException]
   /// subclasses on API errors.
