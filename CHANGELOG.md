@@ -1,6 +1,6 @@
 ## 0.11.1
 
-* **Docs**: Reordered and simplified the README. Migration steps for breaking changes are now in [MIGRATION.md](MIGRATION.md).
+* **Docs**: Reordered and simplified the README. Migration steps are now in [MIGRATION.md](MIGRATION.md) and regulatory status in [REGULATORY.md](REGULATORY.md).
 
 ## 0.11.0
 

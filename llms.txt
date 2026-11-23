@@ -41,6 +41,7 @@ Errors all extend `AgeSignalsException`, which carries `code` and, when the plat
 - [README](https://github.com/zigapovhe/age_range_signals/blob/main/README.md): platform setup, full usage examples, testing, troubleshooting, and legal compliance
 - [API reference](https://pub.dev/documentation/age_range_signals/latest/): generated dartdoc for every public symbol
 - [Migration guide](https://github.com/zigapovhe/age_range_signals/blob/main/MIGRATION.md): what to change in your code when upgrading across a breaking version
+- [Regulatory status](https://github.com/zigapovhe/age_range_signals/blob/main/REGULATORY.md): which laws and store rules apply where, with dates and sources
 - [CHANGELOG](https://github.com/zigapovhe/age_range_signals/blob/main/CHANGELOG.md): version-specific behavior, including the 0.8.0 breaking changes and bugs fixed in 0.6.x
 
 ## Optional
