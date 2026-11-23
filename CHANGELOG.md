@@ -1,6 +1,6 @@
 ## 0.11.2
 
-* **Docs**: Fixed the links to MIGRATION.md, REGULATORY.md, LICENSE and the example app, which pub.dev showed as plain text.
+* **Docs**: Fixed broken links on pub.dev.
 
 ## 0.11.1
 
