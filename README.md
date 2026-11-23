@@ -127,7 +127,7 @@ If `com.apple.developer.declared-age-range` isn't listed, see [MissingEntitlemen
 
 ### Two calls
 
-Reading age signals takes two calls. Play split them in age-signals 0.0.4 and the plugin uses the same flow on iOS, but each platform shows its UI in a different one.
+Reading age signals takes two calls, as in Google's API. The plugin uses the same flow on iOS, but each platform shows its UI in a different one.
 
 `requestAgeSignalsAccess()` asks for access. On Android it can show Play's age sharing sheet over your activity, so call it from a foregrounded app. It returns `shared`, `notShared` (the user declined or isn't eligible; not an error), `verificationRequired`, or `unknown` for a state the plugin doesn't recognize. Only call `checkAgeSignals()` after `shared`. If you skip the access call, Play never prompts and `checkAgeSignals()` reports `unknown`. In US states whose laws require app stores to provide verified ages, Play skips the sheet entirely: users who are already verified or supervised come back `shared`, and unverified users come back `verificationRequired` and have to finish in the Play Store ([handling it](#handling-verificationrequired-android)). Where sharing is mandatory without verification, Play [shares without asking](https://support.google.com/googleplay/answer/17232873). Everywhere else it can show the sheet; to skip it there, call `isEligibleForAgeFeatures()` first ([Regional Eligibility](#regional-eligibility)).
 
