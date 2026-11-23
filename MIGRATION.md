@@ -39,6 +39,19 @@ class FakeAgeRangeSignals
    With mock data, both now follow `AgeSignalsMockData.mandatorySharing`, which is `true` when you don't set it. Set `mandatorySharing: false` to mock a user no sharing law applies to.
 
 4. Decide where Play's sharing prompt may show. It can now show in any region as Google rolls it out. If you only want it where a law requires sharing, call `isEligibleForAgeFeatures()` first (see [Regional Eligibility](README.md#regional-eligibility)). If showing it everywhere is fine, there's nothing to do.
+5. If you copied the `verificationRequired` sample from the README of 0.9.0 to 0.10.1, fix it. It checked again every time the app resumed, and a store's prompt pauses and resumes your app, so it kept asking. Only check again while verification is pending:
+
+   ```dart
+   bool _verificationPending = false;
+
+   // In didChangeAppLifecycleState
+   if (state == AppLifecycleState.resumed && _verificationPending) _check();
+
+   // In _check, right after requestAgeSignalsAccess()
+   _verificationPending = access == AgeSignalsAccessStatus.verificationRequired;
+   ```
+
+   The full sample is in [Handling verificationRequired](README.md#handling-verificationrequired-android).
 
 ## 0.10.1
 
