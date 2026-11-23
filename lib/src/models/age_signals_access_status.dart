@@ -1,9 +1,9 @@
 /// Outcome of requesting access to the user's age signals.
 ///
-/// Returned by `AgeRangeSignals.instance.requestAgeSignalsAccess()`. Since
-/// age-signals 0.0.4 Google Play splits age signals across two calls: the
-/// access request (which may show Play's in-app age sharing prompt) and
-/// `checkAgeSignals()`, which only carries signals once access is [shared].
+/// Returned by `AgeRangeSignals.instance.requestAgeSignalsAccess()`. Google
+/// Play splits age signals across two calls: the access request (which may
+/// show Play's in-app age sharing prompt) and `checkAgeSignals()`, which only
+/// carries signals once access is [shared].
 enum AgeSignalsAccessStatus {
   /// Age signals are shared; proceed to `checkAgeSignals()`.
   ///

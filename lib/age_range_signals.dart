@@ -111,12 +111,11 @@ class AgeRangeSignals {
 
   /// Requests access to the current user's age signals (Android).
   ///
-  /// Since age-signals 0.0.4, Google Play splits age signals across two
-  /// calls: this one asks for access - showing Play's in-app age sharing
-  /// prompt when the user's Play settings call for asking first - and
-  /// [checkAgeSignals] then reads the signals. Call this before
-  /// [checkAgeSignals] and only read signals once access is
-  /// [AgeSignalsAccessStatus.shared]:
+  /// Google Play splits age signals across two calls: this one asks for
+  /// access - showing Play's in-app age sharing prompt when the user's Play
+  /// settings call for asking first - and [checkAgeSignals] then reads the
+  /// signals. Call this before [checkAgeSignals] and only read signals once
+  /// access is [AgeSignalsAccessStatus.shared]:
   ///
   /// ```dart
   /// final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
