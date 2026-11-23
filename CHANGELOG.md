@@ -1,6 +1,10 @@
+## 0.11.2
+
+* **Docs**: Fixed broken links on pub.dev.
+
 ## 0.11.1
 
-* **Docs**: Reordered and simplified the README. Migration steps are now in [MIGRATION.md](MIGRATION.md) and regulatory status in [REGULATORY.md](REGULATORY.md).
+* **Docs**: Reordered and simplified the README. Migration steps are now in [MIGRATION.md](https://github.com/zigapovhe/age_range_signals/blob/main/MIGRATION.md) and regulatory status in [REGULATORY.md](https://github.com/zigapovhe/age_range_signals/blob/main/REGULATORY.md).
 
 ## 0.11.0
 
