@@ -3,8 +3,10 @@ package si.povhe.age_range_signals
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import com.google.android.play.agesignals.AgeSignalsException
 import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsStatus
+import com.google.android.play.agesignals.model.ApplicableAgeFeature
 import com.google.android.play.agesignals.model.SignificantChangeStatus
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
@@ -26,6 +28,99 @@ internal class AgeRangeSignalsPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         Mockito.verify(mockResult).success(null)
+    }
+
+    @Test
+    fun channelErrorCode_deviceNotSupported_isApiNotAvailable() {
+        // Play 0.0.6 reports device types other than phones, foldables and
+        // tablets as DEVICE_NOT_SUPPORTED (-11); handle it like a missing API.
+        assertEquals(
+            "API_NOT_AVAILABLE",
+            AgeRangeSignalsPlugin().channelErrorCode(AgeSignalsException(-11)),
+        )
+    }
+
+    @Test
+    fun channelErrorCode_missingOrOldPlayStore_isPlayServicesError() {
+        // Without the Play Store the manager still exists and every call fails
+        // with PLAY_STORE_NOT_FOUND (-2). getApplicableAgeFeatures needs a
+        // newer Play Store than the other calls, below which it fails with
+        // PLAY_STORE_VERSION_OUTDATED (-6). Both are documented as
+        // PlayServicesException.
+        val plugin = AgeRangeSignalsPlugin()
+        assertEquals("PLAY_SERVICES_ERROR", plugin.channelErrorCode(AgeSignalsException(-2)))
+        assertEquals("PLAY_SERVICES_ERROR", plugin.channelErrorCode(AgeSignalsException(-6)))
+    }
+
+    // --- Applicable age features (Play 0.0.6) ---
+
+    @Test
+    fun buildMockApplicableFeaturesResult_noMockData_isMandatory() {
+        // Mocked flows default to a user Play must share for, the same way
+        // accessStatus defaults to shared, so eligibility-gated code runs.
+        assertEquals(
+            setOf(ApplicableAgeFeature.MANDATORY_SHARING),
+            AgeRangeSignalsPlugin().buildMockApplicableFeaturesResult(null).features(),
+        )
+    }
+
+    @Test
+    fun buildMockApplicableFeaturesResult_mandatorySharingFalse_isEmpty() {
+        val result = AgeRangeSignalsPlugin().buildMockApplicableFeaturesResult(
+            mapOf("mandatorySharing" to false),
+        )
+
+        assertEquals(emptySet<Int>(), result.features())
+    }
+
+    @Test
+    fun regulatoryFeatureNames_mandatorySharing_isDeclaredAgeRangeRequired() {
+        assertEquals(
+            listOf("declaredAgeRangeRequired"),
+            AgeRangeSignalsPlugin().regulatoryFeatureNames(
+                setOf(ApplicableAgeFeature.MANDATORY_SHARING),
+            ),
+        )
+    }
+
+    @Test
+    fun regulatoryFeatureNames_dropsUnknownFeatures() {
+        // A feature added in a later Play release must not be misreported as
+        // one the plugin knows.
+        assertEquals(
+            emptyList<String>(),
+            AgeRangeSignalsPlugin().regulatoryFeatureNames(setOf(2, 99)),
+        )
+    }
+
+    @Test
+    fun isEligibleForAgeFeatures_noManager_reportsApiNotAvailable() {
+        // No engine and no activity. On a device the manager is never null
+        // (a missing Play Store surfaces as -2 instead), so this pins the
+        // defensive branch and that no activity is required.
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        AgeRangeSignalsPlugin().onMethodCall(MethodCall("isEligibleForAgeFeatures", null), mockResult)
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("API_NOT_AVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
+    }
+
+    @Test
+    fun getRequiredRegulatoryFeatures_noManager_reportsApiNotAvailable() {
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        AgeRangeSignalsPlugin().onMethodCall(
+            MethodCall("getRequiredRegulatoryFeatures", null),
+            mockResult,
+        )
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("API_NOT_AVAILABLE"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
     }
 
     // --- Mock data band logic (regression coverage for 0.6.0) ---

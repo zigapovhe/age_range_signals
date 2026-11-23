@@ -37,6 +37,7 @@ class AgeSignalsMockData {
     this.accessStatus,
     this.ageRangeSource,
     this.significantChangeStatus,
+    this.mandatorySharing,
     DateTime? significantChangeApprovalDate,
     @Deprecated(
       'Use significantChangeApprovalDate instead. '
@@ -102,6 +103,16 @@ class AgeSignalsMockData {
   /// to declined, otherwise unset).
   final SignificantChangeStatus? significantChangeStatus;
 
+  /// Whether Play reports age sharing as mandatory for the mocked user
+  /// (Android only).
+  ///
+  /// `true` makes `isEligibleForAgeFeatures()` return `true` and puts
+  /// `AgeRegulatoryFeature.declaredAgeRangeRequired` in
+  /// `getRequiredRegulatoryFeatures()`. Defaults to `true` when null, so
+  /// eligibility-gated mock flows proceed; set `false` to model a user
+  /// outside any region with a sharing mandate.
+  final bool? mandatorySharing;
+
   /// Mock significant change approval date (Android only).
   ///
   /// Maps to the `significantChangeApprovalDate` reported by the Play Age
@@ -127,6 +138,7 @@ class AgeSignalsMockData {
       'accessStatus': accessStatus?.name,
       'ageRangeSource': ageRangeSource?.name,
       'significantChangeStatus': significantChangeStatus?.name,
+      'mandatorySharing': mandatorySharing,
       'significantChangeApprovalDate':
           significantChangeApprovalDate?.millisecondsSinceEpoch,
     };
@@ -146,6 +158,7 @@ class AgeSignalsMockData {
     AgeSignalsAccessStatus? accessStatus,
     AgeRangeSource? ageRangeSource,
     SignificantChangeStatus? significantChangeStatus,
+    bool? mandatorySharing,
     DateTime? significantChangeApprovalDate,
     @Deprecated(
       'Use significantChangeApprovalDate instead. '
@@ -163,6 +176,7 @@ class AgeSignalsMockData {
       ageRangeSource: ageRangeSource ?? this.ageRangeSource,
       significantChangeStatus:
           significantChangeStatus ?? this.significantChangeStatus,
+      mandatorySharing: mandatorySharing ?? this.mandatorySharing,
       significantChangeApprovalDate:
           significantChangeApprovalDate ??
           mostRecentApprovalDate ??
@@ -176,6 +190,7 @@ class AgeSignalsMockData {
         'ageUpper: $ageUpper, source: $source, installId: $installId, '
         'accessStatus: $accessStatus, ageRangeSource: $ageRangeSource, '
         'significantChangeStatus: $significantChangeStatus, '
+        'mandatorySharing: $mandatorySharing, '
         'significantChangeApprovalDate: $significantChangeApprovalDate)';
   }
 
@@ -192,6 +207,7 @@ class AgeSignalsMockData {
         other.accessStatus == accessStatus &&
         other.ageRangeSource == ageRangeSource &&
         other.significantChangeStatus == significantChangeStatus &&
+        other.mandatorySharing == mandatorySharing &&
         other.significantChangeApprovalDate?.millisecondsSinceEpoch ==
             significantChangeApprovalDate?.millisecondsSinceEpoch;
   }
@@ -207,6 +223,7 @@ class AgeSignalsMockData {
       accessStatus,
       ageRangeSource,
       significantChangeStatus,
+      mandatorySharing,
       significantChangeApprovalDate?.millisecondsSinceEpoch,
     );
   }

@@ -256,8 +256,8 @@ enum AgeSignalsStatus {
   /// `supervised` on Android.
   ///
   /// Any tier can reach this, so a self-declared band clears the gate just
-  /// as an ID-verified one does. Check [AgeSignalsResult.ageRangeSource] if
-  /// you need a minimum assurance level.
+  /// as an ID-verified one does. [AgeSignalsResult.ageRangeSource] and
+  /// [AgeSignalsResult.source] say how the age was established.
   verified,
 
   /// User's age could not be determined.
@@ -265,8 +265,9 @@ enum AgeSignalsStatus {
   /// This may occur when:
   /// - Age signals are not shared (Android; request access first, and note
   ///   the user may have declined or may still need to verify)
-  /// - Age verification data is not available
-  /// - API is not available in the user's region
+  /// - The platform reported a range with no bounds
+  ///
+  /// An unavailable API throws instead.
   unknown,
 
   /// User declined to share their age information (iOS only).
@@ -345,12 +346,13 @@ enum AgeDeclarationSource {
 
 /// How Google Play established the user's age range (Android only).
 ///
-/// Reported by the Play Age Signals API since age-signals 0.0.4, ordered
-/// from weakest to strongest assurance. The tier vocabulary is Google's own;
-/// the exact verification methods behind each tier are defined by the Play
-/// Age Signals documentation and may evolve.
+/// Reported by the Play Age Signals API since age-signals 0.0.4. Google does
+/// not rank the tiers. The tier vocabulary is Google's own; the exact
+/// verification methods behind each tier are defined by the Play Age Signals
+/// documentation and may evolve.
 enum AgeRangeSource {
-  /// The user self-declared their age through Google Play.
+  /// The user gave their age to Google, which may or may not have confirmed
+  /// it. Adults who share voluntarily report this tier even when verified.
   tierA,
 
   /// The age range comes from a parent- or guardian-managed account.
@@ -365,9 +367,13 @@ enum AgeRangeSource {
   tierB,
 
   /// Verified via credit card, email, selfie, government ID, or tax ID.
+  ///
+  /// Only returned where age verification is mandatory.
   tierC,
 
   /// Verified via government ID plus selfie, or a Digital ID.
+  ///
+  /// Only returned where age verification is mandatory.
   tierD;
 
   /// Parses a source name coming over the platform channel.

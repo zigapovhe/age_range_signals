@@ -73,8 +73,31 @@ void main() {
     );
 
     if (Platform.isAndroid) {
-      // Android has no equivalent and must say so rather than answer false.
-      await expectLater(call, throwsA(isA<UnsupportedPlatformException>()));
+      // Play answers since 0.11.0. A sideloaded build may get
+      // ApiNotAvailableException, but never UnsupportedPlatformException.
+      try {
+        expect(await call, isA<bool>());
+      } on AgeSignalsException catch (e) {
+        expect(e, isNot(isA<UnsupportedPlatformException>()));
+      }
+
+      // The mock pins the wiring both ways.
+      addTearDown(
+        () => AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]),
+      );
+      await AgeRangeSignals.instance.initialize(useMockData: true);
+      expect(await AgeRangeSignals.instance.isEligibleForAgeFeatures(), isTrue);
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: const AgeSignalsMockData(
+          status: AgeSignalsStatus.verified,
+          mandatorySharing: false,
+        ),
+      );
+      expect(
+        await AgeRangeSignals.instance.isEligibleForAgeFeatures(),
+        isFalse,
+      );
       return;
     }
 
@@ -102,9 +125,30 @@ void main() {
         .timeout(const Duration(seconds: 20));
 
     if (Platform.isAndroid) {
-      // Android must succeed with an empty set; anything else is a
-      // regression in the Kotlin stub.
-      expect(await call, isEmpty);
+      try {
+        expect(await call, isA<Set<AgeRegulatoryFeature>>());
+      } on AgeSignalsException catch (e) {
+        expect(e, isNot(isA<UnsupportedPlatformException>()));
+      }
+
+      addTearDown(
+        () => AgeRangeSignals.instance.initialize(ageGates: [13, 16, 18]),
+      );
+      await AgeRangeSignals.instance.initialize(useMockData: true);
+      expect(await AgeRangeSignals.instance.getRequiredRegulatoryFeatures(), {
+        AgeRegulatoryFeature.declaredAgeRangeRequired,
+      });
+      await AgeRangeSignals.instance.initialize(
+        useMockData: true,
+        mockData: const AgeSignalsMockData(
+          status: AgeSignalsStatus.verified,
+          mandatorySharing: false,
+        ),
+      );
+      expect(
+        await AgeRangeSignals.instance.getRequiredRegulatoryFeatures(),
+        isEmpty,
+      );
       return;
     }
 

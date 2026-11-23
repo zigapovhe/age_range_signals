@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:age_range_signals/age_range_signals.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   runApp(const MyApp());
@@ -80,6 +80,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _result = null;
       _error = null;
       _accessOutcome = null;
+      _eligibilityOutcome = null;
+      _regulatoryOutcome = null;
     });
     await _initializePlugin(mockData: mockData);
   }
@@ -107,6 +109,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       _result = null;
       _error = null;
       _accessOutcome = null;
+      _eligibilityOutcome = null;
+      _regulatoryOutcome = null;
       _currentScenario = 'Default (Supervised 13-15)';
     });
     await _initializePlugin();
@@ -169,8 +173,8 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       stopwatch.stop();
       setState(() {
         _eligibilityOutcome =
-            '$eligible (Apple ${eligible ? 'requires' : 'does not require'} '
-            'age assurance) in ${stopwatch.elapsedMilliseconds} ms';
+            '$eligible (sharing is ${eligible ? 'mandatory' : 'not mandatory'} '
+            'for this user) in ${stopwatch.elapsedMilliseconds} ms';
       });
     } on AgeSignalsException catch (e) {
       stopwatch.stop();
@@ -193,7 +197,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
       stopwatch.stop();
       setState(() {
         _regulatoryOutcome = features.isEmpty
-            ? 'Empty set (Apple reports nothing required) '
+            ? 'Empty set (nothing required) '
                   'in ${stopwatch.elapsedMilliseconds} ms'
             : '${features.map((f) => f.name).join(', ')} '
                   'in ${stopwatch.elapsedMilliseconds} ms';
@@ -409,6 +413,16 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
                   const AgeSignalsMockData(
                     status: AgeSignalsStatus.unknown,
                     accessStatus: AgeSignalsAccessStatus.notShared,
+                    mandatorySharing: false,
+                  ),
+                ),
+                _buildScenarioChip(
+                  'Not mandatory region',
+                  const AgeSignalsMockData(
+                    status: AgeSignalsStatus.verified,
+                    ageRangeSource: AgeRangeSource.tierA,
+                    ageLower: 18,
+                    mandatorySharing: false,
                   ),
                 ),
               ],
@@ -471,7 +485,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Eligibility & Regulatory Features (iOS 26.2+ / 26.4+)',
+              'Eligibility & Regulatory Features',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -712,7 +726,7 @@ class _AgeSignalsDemoState extends State<AgeSignalsDemo> {
   String _getAgeRangeSourceText(AgeRangeSource source) {
     switch (source) {
       case AgeRangeSource.tierA:
-        return 'Tier A (self-declared)';
+        return 'Tier A (self-declared or shared voluntarily)';
       case AgeRangeSource.tierB:
         return 'Tier B (parent-managed account)';
       case AgeRangeSource.tierC:

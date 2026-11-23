@@ -1,17 +1,18 @@
-/// A regulatory action Apple reports as required for the current user
-/// (iOS 26.4+ only).
+/// A regulatory action the store reports as required for the current user
+/// (iOS 26.4+, and Android with Play age-signals 0.0.6).
 ///
 /// Returned by `AgeRangeSignals.instance.getRequiredRegulatoryFeatures()`.
 /// The set is derived from the user's region and account settings, so it
-/// tells you what the App Store requires for this specific person.
+/// tells you what the store requires for this specific person.
 ///
-/// Android has no equivalent concept; the Play Age Signals API implicitly
-/// returns data only in regions where it is legally required.
+/// Android only ever reports [declaredAgeRangeRequired], from Play's
+/// mandatory-sharing check. The significant-change values are iOS only.
 enum AgeRegulatoryFeature {
   /// The user is required to share their age range with your app.
   ///
-  /// When present, call `checkAgeSignals()` so the user can declare their
-  /// range. When absent, Apple imposes no obligation to prompt this user.
+  /// When present, request access and call `checkAgeSignals()` so the store
+  /// can share the user's range. When absent, the store reports no
+  /// obligation to prompt this user.
   declaredAgeRangeRequired,
 
   /// Adult users must acknowledge a significant change to your app.

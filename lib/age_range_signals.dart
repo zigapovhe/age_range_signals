@@ -40,17 +40,11 @@ export 'src/models/age_regulatory_feature.dart';
 ///
 ///   switch (result.status) {
 ///     case AgeSignalsStatus.verified:
-///       print('User is verified');
-///       break;
+///       print('At or above the highest gate');
 ///     case AgeSignalsStatus.supervised:
-///       print('User is under supervision');
-///       break;
-///     case AgeSignalsStatus.declined:
-///       print('User declined to share age');
-///       break;
-///     case AgeSignalsStatus.unknown:
-///       print('Age information not available');
-///       break;
+///       print('Below the highest gate');
+///     default:
+///       print('No verdict: ${result.status}');
 ///   }
 /// } on AgeSignalsException catch (e) {
 ///   print('Error: $e');
@@ -176,52 +170,62 @@ class AgeRangeSignals {
     return AgeRangeSignalsPlatform.instance.checkAgeSignals();
   }
 
-  /// Reports whether Apple considers the current user subject to age
-  /// assurance, based on their region and account settings (iOS 26.2+).
+  /// Reports whether the current user is subject to age assurance, based on
+  /// their region and account settings.
   ///
-  /// This is the first step in Apple's
+  /// On iOS (26.2+) this is Apple's eligibility check and the first step in
+  /// its
   /// [documented flow](https://developer.apple.com/documentation/declaredagerange/requesting-people-share-their-age-range-with-your-app#Check-eligibility-for-age-related-features).
-  /// [checkAgeSignals] never calls it for you; use it to keep the age range
-  /// sheet away from users in regions with no obligation:
+  /// On Android it is Play's mandatory-sharing check (age-signals 0.0.6):
+  /// `true` when a law requires Play to share this user's age.
+  ///
+  /// Both stores can show their sharing prompt outside those regions too,
+  /// where sharing is voluntary. Neither [requestAgeSignalsAccess] nor
+  /// [checkAgeSignals] calls this for you; use it to keep the prompt away
+  /// from users with no obligation:
   ///
   /// ```dart
   /// bool obligated;
   /// try {
   ///   obligated = await AgeRangeSignals.instance.isEligibleForAgeFeatures();
-  /// } on UnsupportedPlatformException {
+  /// } on AgeSignalsException {
+  ///   // Older iOS, or a missing or outdated Play Store on Android.
   ///   obligated = yourOwnRegionalFallback();
   /// }
   /// if (obligated) {
-  ///   final result = await AgeRangeSignals.instance.checkAgeSignals();
+  ///   final access = await AgeRangeSignals.instance.requestAgeSignalsAccess();
+  ///   if (access == AgeSignalsAccessStatus.shared) {
+  ///     final result = await AgeRangeSignals.instance.checkAgeSignals();
+  ///   }
   /// }
   /// ```
   ///
-  /// [getRequiredRegulatoryFeatures] does not replace it: Apple DTS
+  /// On iOS, [getRequiredRegulatoryFeatures] does not replace it: Apple DTS
   /// [states](https://developer.apple.com/forums/thread/815952?answerId=880880022#880880022)
   /// the feature set can be empty while this returns `true`, and the
-  /// obligation still stands.
+  /// obligation still stands. On iOS the call is guarded by a 10-second
+  /// deadline (a timeout surfaces as [ApiErrorException]), and Apple caches
+  /// the value, so a sandbox scenario change only shows up after a relaunch.
   ///
-  /// Guarded by a 10-second deadline; a timeout surfaces as
-  /// [ApiErrorException]. Apple caches the value, so a sandbox scenario
-  /// change only shows up after a relaunch.
-  ///
-  /// Throws [UnsupportedPlatformException] on Android, on iOS below 26.2
-  /// and in apps built with an SDK older than iOS 26.2 (Xcode < 26.2), so
-  /// `false` is always Apple's own answer rather than a fallback. Treat it
-  /// as Apple's current report, not a stable region flag: devices in a
+  /// Throws [UnsupportedPlatformException] on iOS below 26.2 and in apps
+  /// built with an SDK older than iOS 26.2 (Xcode < 26.2), so `false` is
+  /// always the store's own answer rather than a fallback. Treat Apple's
+  /// answer as its current report, not a stable region flag: devices in a
   /// regulated region have been seen flipping to `false` with no account
   /// change, so keep a caller-side fallback where a law applies to you
-  /// regardless. Play limits itself to
-  /// covered regions on its own, so on Android call [requestAgeSignalsAccess]
-  /// directly. Throws [ApiNotAvailableException] when Apple reports the
-  /// service unavailable and other [AgeSignalsException] subclasses on API
-  /// errors.
+  /// regardless. Throws [ApiNotAvailableException] when the store reports
+  /// the service unavailable (on Android: an app not installed from
+  /// Google Play, or an unsupported device type), [PlayServicesException] on Android
+  /// when the Play Store is missing or older than this check needs (it needs
+  /// a newer one than [checkAgeSignals]), and other [AgeSignalsException]
+  /// subclasses on API errors.
   Future<bool> isEligibleForAgeFeatures() {
     return AgeRangeSignalsPlatform.instance.isEligibleForAgeFeatures();
   }
 
-  /// Returns the regulatory features Apple reports as required for the
-  /// current user, based on their region and account settings (iOS 26.4+).
+  /// Returns the regulatory features the store reports as required for the
+  /// current user, based on their region and account settings (iOS 26.4+,
+  /// and Android with Play age-signals 0.0.6).
   ///
   /// An empty set means none of the known [AgeRegulatoryFeature] values
   /// apply, which is not clearance on its own: per Apple DTS a regulation
@@ -230,14 +234,16 @@ class AgeRangeSignals {
   /// stands, so check eligibility before reading an empty set as permission
   /// to skip the prompt.
   ///
-  /// Returns an empty set on Android: the Play Age Signals API has no
-  /// equivalent concept and implicitly limits itself to regions where it
-  /// is legally required, so "nothing to report" is the true answer there.
+  /// On Android the set holds [AgeRegulatoryFeature.declaredAgeRangeRequired]
+  /// exactly when [isEligibleForAgeFeatures] returns `true`, since both read
+  /// Play's mandatory-sharing check. The two significant-change values are
+  /// iOS only.
   ///
   /// Throws [UnsupportedPlatformException] on iOS below 26.4 and in apps
   /// built with an SDK older than iOS 26.4 (Xcode < 26.4), where the
   /// requirement cannot be checked. This keeps the empty set unambiguous;
-  /// keep your own regional logic for those devices. Throws other
+  /// keep your own regional logic for those devices. On Android it throws
+  /// the same exceptions as [isEligibleForAgeFeatures]. Throws other
   /// [AgeSignalsException] subclasses on API errors.
   Future<Set<AgeRegulatoryFeature>> getRequiredRegulatoryFeatures() {
     return AgeRangeSignalsPlatform.instance.getRequiredRegulatoryFeatures();

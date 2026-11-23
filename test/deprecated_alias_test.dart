@@ -31,9 +31,8 @@ void main() {
     });
 
     test('AgeSignalsResult.copyWith accepts the old name', () {
-      final result = AgeSignalsResult(
-        status: AgeSignalsStatus.supervised,
-      ).copyWith(mostRecentApprovalDate: date);
+      final result = AgeSignalsResult(status: AgeSignalsStatus.supervised)
+          .copyWith(mostRecentApprovalDate: date);
 
       expect(result.significantChangeApprovalDate, date);
     });
@@ -56,9 +55,8 @@ void main() {
     });
 
     test('AgeSignalsMockData.copyWith accepts the old name', () {
-      final mock = const AgeSignalsMockData(
-        status: AgeSignalsStatus.supervised,
-      ).copyWith(mostRecentApprovalDate: date);
+      final mock = const AgeSignalsMockData(status: AgeSignalsStatus.supervised)
+          .copyWith(mostRecentApprovalDate: date);
 
       expect(mock.significantChangeApprovalDate, date);
     });
