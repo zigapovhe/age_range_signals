@@ -15,10 +15,12 @@ import com.google.android.play.agesignals.model.AgeRangeSource
 import com.google.android.play.agesignals.model.AgeSignalsErrorCode
 import com.google.android.play.agesignals.model.AgeSignalsStatus
 import com.google.android.play.agesignals.model.ApplicableAgeFeature
+import com.google.android.play.agesignals.model.SignificantChangeStatus
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.mockito.Mockito
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -121,6 +123,42 @@ internal class PlayManagerTest {
                 "significantChangeApprovalDate" to null,
             ),
         )
+    }
+
+    @Test
+    fun check_mapsEveryResponseGoogleDocuments() {
+        // The examples on Google's "Understand age signals responses" page.
+        val adult = mapOf("status" to "verified", "ageLower" to 18, "ageUpper" to null, "installId" to null)
+        val teen = mapOf("status" to "supervised", "ageLower" to 13, "ageUpper" to 15)
+        val examples = listOf(
+            signals(AgeRangeSource.TIER_D, 18) to adult + ("ageRangeSource" to "tierD"),
+            signals(AgeRangeSource.TIER_C, 18) to adult + ("ageRangeSource" to "tierC"),
+            signals(AgeRangeSource.TIER_A, 18) to adult + ("ageRangeSource" to "tierA"),
+            signals(AgeRangeSource.TIER_B, 13, 15) to teen + ("ageRangeSource" to "tierB"),
+            AgeSignalsResult.builder() to
+                mapOf("status" to "unknown", "ageRangeSource" to null, "ageLower" to null, "ageUpper" to null),
+            signals(AgeRangeSource.TIER_B, 13, 15)
+                .setSignificantChangeStatus(SignificantChangeStatus.APPROVED)
+                .setSignificantChangeApprovalDate(Date(1768435200000L))
+                .setInstallId("abc123xyz789") to
+                teen + mapOf(
+                    "ageRangeSource" to "tierB",
+                    "significantChangeStatus" to "approved",
+                    "significantChangeApprovalDate" to 1768435200000L,
+                    "installId" to "abc123xyz789",
+                ),
+        )
+
+        for ((playResult, expected) in examples) {
+            val task = succeeded(playResult.build())
+            Mockito.`when`(manager.checkAgeSignals(Mockito.any())).thenReturn(task)
+
+            Mockito.verify(call("checkAgeSignals"), Mockito.description("$expected")).success(
+                Mockito.argThat<Any> { actual ->
+                    actual is Map<*, *> && expected.all { (key, value) -> actual[key] == value }
+                },
+            )
+        }
     }
 
     @Test
@@ -234,6 +272,12 @@ internal class PlayManagerTest {
         Mockito.`when`(manager.getApplicableAgeFeatures(Mockito.any())).thenReturn(features)
         Mockito.`when`(manager.checkAgeSignals(Mockito.any())).thenReturn(signals)
         Mockito.`when`(manager.requestAgeSignalsAccess(Mockito.any())).thenReturn(access)
+    }
+
+    private fun signals(tier: Int, lower: Int, upper: Int? = null): AgeSignalsResult.Builder {
+        val builder = AgeSignalsResult.builder().setAgeRangeSource(tier).setAgeLower(lower)
+        upper?.let { builder.setAgeUpper(it) }
+        return builder
     }
 
     private fun attachActivity() {
