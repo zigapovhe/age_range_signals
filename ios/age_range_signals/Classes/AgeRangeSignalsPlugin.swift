@@ -459,10 +459,25 @@ public class AgeRangeSignalsPlugin: NSObject, FlutterPlugin {
     }
     #endif
 
+    /// Mangled name of the async function pointer behind the
+    /// `AgeRangeService.isEligibleForAgeFeatures` getter.
+    private static let isEligibleForAgeFeaturesSymbol =
+        "$s16DeclaredAgeRange0bC7ServiceV013isEligibleForB8FeaturesSbvgTu"
+
+    /// Early iOS 26.2 betas report 26.2 but predate `isEligibleForAgeFeatures`
+    /// (it first shipped in the 26.2 beta 2 SDK), so `#available` passes while
+    /// the weak-linked symbol resolves to null and awaiting it segfaults.
+    /// Looking the symbol up first turns that crash into a regular error.
+    private static var isEligibleForAgeFeaturesLinked: Bool {
+        // RTLD_DEFAULT is a C macro Swift does not import.
+        let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)
+        return dlsym(rtldDefault, isEligibleForAgeFeaturesSymbol) != nil
+    }
+
     private func handleIsEligibleForAgeFeatures(result: @escaping FlutterResult) {
         // Same SDK guard as the 26.2 symbols above: Xcode 26.2 ships Swift 6.2.3.
         #if canImport(DeclaredAgeRange) && compiler(>=6.2.3)
-        if #available(iOS 26.2, *) {
+        if #available(iOS 26.2, *), Self.isEligibleForAgeFeaturesLinked {
             Task { @MainActor in
                 do {
                     let eligible = try await self.withDeadline(seconds: 10) {
